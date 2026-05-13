@@ -343,78 +343,80 @@ CREATE INDEX idx_deployments_project_id ON deployments(project_id);
 
 ## API Endpoints
 
+**Base path:** `/api/v1` (see `docs/API_SPEC.md`). **Liveness:** `GET /health` (outside versioned prefix) and `GET /api/v1/health`.
+
 ### Authentication
 
 ```
-POST   /api/auth/register          # User registration
-POST   /api/auth/login             # User login
-POST   /api/auth/logout            # User logout
-GET    /api/auth/me                # Current user info
+POST   /api/v1/auth/register       # User registration
+POST   /api/v1/auth/login          # User login
+POST   /api/v1/auth/logout         # User logout
+GET    /api/v1/auth/me             # Current user info
 ```
 
 ### Projects
 
 ```
-GET    /api/projects               # List user projects
-POST   /api/projects               # Create new project
-GET    /api/projects/{id}          # Get project details
-PUT    /api/projects/{id}          # Update project
-DELETE /api/projects/{id}          # Delete project
+GET    /api/v1/projects            # List user projects
+POST   /api/v1/projects            # Create new project
+GET    /api/v1/projects/{id}       # Get project details
+PUT    /api/v1/projects/{id}       # Update project
+DELETE /api/v1/projects/{id}      # Delete project
 ```
 
 ### Tools
 
 ```
-GET    /api/projects/{id}/tools    # List project tools
-POST   /api/projects/{id}/tools    # Create tool
-GET    /api/tools/{id}             # Get tool details
-PUT    /api/tools/{id}             # Update tool
-DELETE /api/tools/{id}             # Delete tool
-POST   /api/tools/{id}/test        # Test tool execution
+GET    /api/v1/projects/{id}/tools    # List project tools
+POST   /api/v1/projects/{id}/tools    # Create tool
+GET    /api/v1/tools/{id}             # Get tool details
+PUT    /api/v1/tools/{id}             # Update tool
+DELETE /api/v1/tools/{id}            # Delete tool
+POST   /api/v1/tools/{id}/test        # Test tool execution
 ```
 
 ### Resources
 
 ```
-GET    /api/projects/{id}/resources  # List project resources
-POST   /api/projects/{id}/resources  # Create resource
-GET    /api/resources/{id}           # Get resource details
-PUT    /api/resources/{id}           # Update resource
-DELETE /api/resources/{id}           # Delete resource
+GET    /api/v1/projects/{id}/resources  # List project resources
+POST   /api/v1/projects/{id}/resources  # Create resource
+GET    /api/v1/resources/{id}           # Get resource details
+PUT    /api/v1/resources/{id}           # Update resource
+DELETE /api/v1/resources/{id}           # Delete resource
 ```
 
 ### Code Generation
 
 ```
-POST   /api/projects/{id}/generate   # Generate MCP server code
-GET    /api/projects/{id}/download   # Download generated code
-POST   /api/projects/{id}/validate   # Validate project config
+POST   /api/v1/projects/{id}/generate   # Generate MCP server code
+GET    /api/v1/projects/{id}/download   # Download generated code
+POST   /api/v1/projects/{id}/validate   # Validate project config
 ```
 
 ### Templates
 
 ```
-GET    /api/templates               # List available templates
-GET    /api/templates/{id}          # Get template details
-POST   /api/projects/from-template  # Create project from template
+GET    /api/v1/templates               # List available templates
+GET    /api/v1/templates/{id}          # Get template details
+POST   /api/v1/projects/from-template  # Create project from template
 ```
 
 ### Testing
 
 ```
-POST   /api/testing/sandbox/start   # Start test sandbox
-POST   /api/testing/sandbox/execute # Execute tool in sandbox
-POST   /api/testing/sandbox/stop    # Stop test sandbox
-GET    /api/testing/results/{id}    # Get test results
+POST   /api/v1/testing/sandbox/start   # Start test sandbox
+POST   /api/v1/testing/sandbox/execute # Execute tool in sandbox
+POST   /api/v1/testing/sandbox/stop    # Stop test sandbox
+GET    /api/v1/testing/results/{id}    # Get test results
 ```
 
 ### Deployment
 
 ```
-POST   /api/deployments            # Create deployment
-GET    /api/deployments/{id}       # Get deployment status
-GET    /api/deployments/{id}/logs  # Get deployment logs
-DELETE /api/deployments/{id}       # Delete deployment
+POST   /api/v1/deployments            # Create deployment
+GET    /api/v1/deployments/{id}       # Get deployment status
+GET    /api/v1/deployments/{id}/logs  # Get deployment logs
+DELETE /api/v1/deployments/{id}       # Delete deployment
 ```
 
 ---
@@ -542,53 +544,50 @@ npm run dev
 
 # Backend setup
 cd ../backend
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
 cp .env.example .env
-uvicorn main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Database setup
-docker-compose up -d postgres redis
-alembic upgrade head
+# Database setup (from repo root)
+docker compose up -d postgres redis
+# After Alembic is added (Phase 1+): cd backend && alembic upgrade head
 ```
 
 ### Project Structure
 
+Canonical layout matches **`docs/ARCHITECTURE.md`** (monorepo root):
+
 ```
 unified-mcp-studio/
-├── frontend/                 # Next.js frontend
-│   ├── app/                 # App router pages
-│   │   ├── (auth)/         # Auth pages
-│   │   ├── dashboard/      # Main dashboard
-│   │   ├── projects/       # Project views
-│   │   └── templates/      # Template library
-│   ├── components/         # React components
-│   │   ├── designer/       # Visual designer components
-│   │   ├── editor/         # Code editors
-│   │   └── ui/             # UI primitives (shadcn)
-│   ├── lib/                # Utilities
-│   └── public/             # Static assets
-├── backend/                # FastAPI backend
-│   ├── api/                # API routes
-│   │   ├── auth.py
-│   │   ├── projects.py
-│   │   ├── tools.py
-│   │   ├── codegen.py
-│   │   └── testing.py
-│   ├── core/               # Core functionality
-│   │   ├── codegen/       # Code generation engine
-│   │   ├── sandbox/       # MCP runtime sandbox
-│   │   └── templates/     # Jinja2 templates
-│   ├── models/            # Database models
-│   ├── schemas/           # Pydantic schemas
-│   └── utils/             # Utilities
-├── templates/             # MCP server templates
-│   ├── typescript/       # TS templates
-│   └── python/           # Python templates
-├── docker/               # Docker configs
-├── docs/                 # Documentation
-└── scripts/              # Utility scripts
+├── frontend/                 # Next.js 14 (App Router)
+│   ├── src/app/             # Routes: (auth), dashboard, projects, templates, …
+│   ├── src/components/      # designer/, editor/, ui/
+│   ├── src/lib/             # API client, stores
+│   ├── public/
+│   └── Dockerfile
+├── backend/                 # FastAPI
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── config.py
+│   │   ├── api/v1/          # routers: auth, projects, tools, …
+│   │   ├── services/
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   ├── workers/         # Celery (Phase 4+)
+│   │   └── core/            # security, logging, rate_limit
+│   ├── tests/
+│   ├── alembic/             # Phase 1+
+│   ├── Dockerfile
+│   └── pyproject.toml
+├── templates/               # Jinja2 MCP server templates (TS / Python)
+│   ├── typescript/
+│   └── python/
+├── docker-compose.yml
+├── Makefile                 # optional dev shortcuts
+├── TASKS.md
+└── docs/
 ```
 
 ---
