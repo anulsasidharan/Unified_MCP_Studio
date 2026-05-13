@@ -1,5 +1,5 @@
 # Optional dev shortcuts (docs/ARCHITECTURE.md).
-.PHONY: dev-up dev-down backend-install frontend-install
+.PHONY: dev-up dev-down backend-install frontend-install db-migrate
 
 dev-up:
 	docker compose up -d postgres redis
@@ -12,3 +12,6 @@ backend-install:
 
 frontend-install:
 	cd frontend && npm install
+
+db-migrate:
+	cd backend && alembic upgrade head
