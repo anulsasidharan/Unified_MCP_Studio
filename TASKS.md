@@ -2,96 +2,98 @@
 
 **Conventions:** one **`feature/<branch-name>`** branch per sub-task; merge via PR to `main`. Order reduces rework: **auth & schema** before **designer**; **codegen** before **sandbox**; **sandbox** before **deploy**.
 
+**Tracking:** **SI No.** is a single running index across all sub-tasks below (1…n). When a sub-task is finished and merged, set **Status** to **`Completed ✅`**; otherwise **`Pending`**.
+
 ---
 
 ## Phase 0 — Repository & docs baseline
 
-| Sub-task | Feature branch |
-|----------|----------------|
-| Monorepo scaffold (`frontend/`, `backend/`, `templates/`, compose) | `feature/scaffold-monorepo` |
-| Align `CLAUDE.md` with implemented paths | `feature/docs-claude-sync` |
-| Backend `config.py` + `.env.example` + health route | `feature/backend-config-health` |
+| SI No. | Sub-task | Feature branch | Status |
+|--------|----------|----------------|--------|
+| 1 | Monorepo scaffold (`frontend/`, `backend/`, `templates/`, compose) | `feature/scaffold-monorepo` | Completed ✅ |
+| 2 | Align `CLAUDE.md` with implemented paths | `feature/docs-claude-sync` | Completed ✅ |
+| 3 | Backend `config.py` + `.env.example` + health route | `feature/backend-config-health` | Completed ✅ |
 
 ---
 
 ## Phase 1 — Auth & users
 
-| Sub-task | Feature branch |
-|----------|----------------|
-| Users model + Alembic initial migration | `feature/db-users-migration` |
-| Register / login / me (`/api/v1/auth/*`) | `feature/api-auth-jwt` |
-| Next.js auth pages + token storage | `feature/frontend-auth-flow` |
+| SI No. | Sub-task | Feature branch | Status |
+|--------|----------|----------------|--------|
+| 4 | Users model + Alembic initial migration | `feature/db-users-migration` | Pending |
+| 5 | Register / login / me (`/api/v1/auth/*`) | `feature/api-auth-jwt` | Pending |
+| 6 | Next.js auth pages + token storage | `feature/frontend-auth-flow` | Pending |
 
 ---
 
 ## Phase 2 — Projects CRUD
 
-| Sub-task | Feature branch |
-|----------|----------------|
-| `projects` table + API CRUD | `feature/api-projects-crud` |
-| Studio project list & detail pages | `feature/frontend-projects-ui` |
+| SI No. | Sub-task | Feature branch | Status |
+|--------|----------|----------------|--------|
+| 7 | `projects` table + API CRUD | `feature/api-projects-crud` | Pending |
+| 8 | Studio project list & detail pages | `feature/frontend-projects-ui` | Pending |
 
 ---
 
 ## Phase 3 — Tools, resources, prompts
 
-| Sub-task | Feature branch |
-|----------|----------------|
-| ORM + API for tools | `feature/api-tools-crud` |
-| ORM + API for resources | `feature/api-resources-crud` |
-| ORM + API for prompts | `feature/api-prompts-crud` |
-| Designer UI: React Flow nodes + forms | `feature/frontend-designer-mvp` |
-| JSON Schema validation service | `feature/backend-jsonschema-validate` |
+| SI No. | Sub-task | Feature branch | Status |
+|--------|----------|----------------|--------|
+| 9 | ORM + API for tools | `feature/api-tools-crud` | Pending |
+| 10 | ORM + API for resources | `feature/api-resources-crud` | Pending |
+| 11 | ORM + API for prompts | `feature/api-prompts-crud` | Pending |
+| 12 | Designer UI: React Flow nodes + forms | `feature/frontend-designer-mvp` | Pending |
+| 13 | JSON Schema validation service | `feature/backend-jsonschema-validate` | Pending |
 
 ---
 
 ## Phase 4 — Code generation
 
-| Sub-task | Feature branch |
-|----------|----------------|
-| Jinja2 template pack (TS + Python minimal server) | `feature/codegen-jinja-templates` |
-| `POST /projects/{id}/validate` + `generate` + Celery `codegen` queue | `feature/backend-codegen-pipeline` |
-| GCS upload + `download` signed URL | `feature/backend-artifact-gcs` |
+| SI No. | Sub-task | Feature branch | Status |
+|--------|----------|----------------|--------|
+| 14 | Jinja2 template pack (TS + Python minimal server) | `feature/codegen-jinja-templates` | Pending |
+| 15 | `POST /projects/{id}/validate` + `generate` + Celery `codegen` queue | `feature/backend-codegen-pipeline` | Pending |
+| 16 | GCS upload + `download` signed URL | `feature/backend-artifact-gcs` | Pending |
 
 ---
 
 ## Phase 5 — Sandbox & testing console
 
-| Sub-task | Feature branch |
-|----------|----------------|
-| Celery `sandbox` queue + worker subprocess wrapper | `feature/backend-sandbox-worker` |
-| `testing/sandbox/*` API + resource limits | `feature/api-sandbox-lifecycle` |
-| Frontend testing console (invoke tool, show logs) | `feature/frontend-testing-console` |
-| Optional: Claude-backed tool test | `feature/backend-claude-test-proxy` |
+| SI No. | Sub-task | Feature branch | Status |
+|--------|----------|----------------|--------|
+| 17 | Celery `sandbox` queue + worker subprocess wrapper | `feature/backend-sandbox-worker` | Pending |
+| 18 | `testing/sandbox/*` API + resource limits | `feature/api-sandbox-lifecycle` | Pending |
+| 19 | Frontend testing console (invoke tool, show logs) | `feature/frontend-testing-console` | Pending |
+| 20 | Optional: Claude-backed tool test | `feature/backend-claude-test-proxy` | Pending |
 
 ---
 
 ## Phase 6 — Templates
 
-| Sub-task | Feature branch |
-|----------|----------------|
-| `templates` seed data + list/get API | `feature/api-templates-library` |
-| `POST /projects/from-template` | `feature/backend-instantiate-template` |
-| Template gallery UI | `feature/frontend-template-gallery` |
+| SI No. | Sub-task | Feature branch | Status |
+|--------|----------|----------------|--------|
+| 21 | `templates` seed data + list/get API | `feature/api-templates-library` | Pending |
+| 22 | `POST /projects/from-template` | `feature/backend-instantiate-template` | Pending |
+| 23 | Template gallery UI | `feature/frontend-template-gallery` | Pending |
 
 ---
 
 ## Phase 7 — Deployments (MVP+)
 
-| Sub-task | Feature branch |
-|----------|----------------|
-| `deployments` model + status API | `feature/api-deployments-crud` |
-| Cloud Run deploy job (skaffold or gcloud from worker) | `feature/worker-cloud-run-deploy` |
+| SI No. | Sub-task | Feature branch | Status |
+|--------|----------|----------------|--------|
+| 24 | `deployments` model + status API | `feature/api-deployments-crud` | Pending |
+| 25 | Cloud Run deploy job (skaffold or gcloud from worker) | `feature/worker-cloud-run-deploy` | Pending |
 
 ---
 
 ## Phase 8 — GCP hardening
 
-| Sub-task | Feature branch |
-|----------|----------------|
-| Terraform or Deployment Manager baseline (VPC, SQL, Redis, GCS) | `feature/infra-gcp-baseline` |
-| GitHub Actions OIDC → deploy Cloud Run | `feature/ci-gcp-oidc-deploy` |
-| Cloud Armor + budgets (optional) | `feature/infra-gcp-security-cost` |
+| SI No. | Sub-task | Feature branch | Status |
+|--------|----------|----------------|--------|
+| 26 | Terraform or Deployment Manager baseline (VPC, SQL, Redis, GCS) | `feature/infra-gcp-baseline` | Pending |
+| 27 | GitHub Actions OIDC → deploy Cloud Run | `feature/ci-gcp-oidc-deploy` | Pending |
+| 28 | Cloud Armor + budgets (optional) | `feature/infra-gcp-security-cost` | Pending |
 
 ---
 
@@ -108,7 +110,7 @@
 
 ## Optional follow-ups
 
-| Sub-task | Feature branch |
-|----------|----------------|
-| tRPC or OpenAPI client codegen for frontend | `feature/frontend-api-client-trpc` |
-| SSE transport + hosted MCP URL | `feature/backend-mcp-sse-transport` |
+| SI No. | Sub-task | Feature branch | Status |
+|--------|----------|----------------|--------|
+| 29 | tRPC or OpenAPI client codegen for frontend | `feature/frontend-api-client-trpc` | Pending |
+| 30 | SSE transport + hosted MCP URL | `feature/backend-mcp-sse-transport` | Pending |
