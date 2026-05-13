@@ -20,9 +20,9 @@
 
 | SI No. | Sub-task | Feature branch | Status |
 |--------|----------|----------------|--------|
-| 4 | Users model + Alembic initial migration | `feature/db-users-migration` | Pending |
-| 5 | Register / login / me (`/api/v1/auth/*`) | `feature/api-auth-jwt` | Pending |
-| 6 | Next.js auth pages + token storage | `feature/frontend-auth-flow` | Pending |
+| 4 | Users model + Alembic initial migration | `feature/db-users-migration` | Completed ✅ |
+| 5 | Register / login / me (`/api/v1/auth/*`) | `feature/api-auth-jwt` | Completed ✅ |
+| 6 | Next.js auth pages + token storage | `feature/frontend-auth-flow` | Completed ✅ |
 
 ---
 

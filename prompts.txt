@@ -7,3 +7,6 @@ Prompt to create the docs and modify the rules
 TASKS creation prompt.
 
 You have access to the entire project directory Based in the markdown files available in the root folder, I want you to modify all the files under @.cursor\rules\ and all files under @docs/ folder. I am going to deploy this application on GCP cloud. Also create TASKS.md file on the root folder. which should contains list of Phases in which the project development goes through and each phases contains sub tasks . each subtasks should be done in seperate feature-branch , give the corresponding feature branch name like "feature/branch-name".  Create this TASKS.md file content so that the dependency issue will be minimized across the development stages. 
+
+
+You have access to all the files and folders of this project. I want you to go ahead and finish from  Phase 2 till end. refer the TASKS.md file for reference. Allign with the other documents in the project folder. 

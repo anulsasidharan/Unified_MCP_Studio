@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +26,14 @@ class Settings(BaseSettings):
     redis_url: str = "redis://127.0.0.1:6379/0"
     celery_broker_url: str = "redis://127.0.0.1:6379/1"
     celery_result_backend: str = "redis://127.0.0.1:6379/2"
+
+    # JWT (use Secret Manager / strong random value in production — docs/DEPLOYMENT.md)
+    jwt_secret_key: str = Field(
+        default="dev-only-change-me-use-openssl-rand-hex-32-chars-min",
+        min_length=32,
+    )
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days; tune per product policy
 
     @property
     def cors_origins_list(self) -> list[str]:
