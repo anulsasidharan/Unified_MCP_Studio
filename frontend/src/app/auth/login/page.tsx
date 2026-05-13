@@ -28,7 +28,14 @@ export default function LoginPage() {
       setStoredAccessToken(data.access_token);
       router.push("/");
       router.refresh();
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message === "Failed to fetch" || message.includes("NetworkError")) {
+        setError(
+          "Could not reach the API. Start the backend on port 8000. For local dev, clear NEXT_PUBLIC_API_BASE_URL in frontend/.env.local so requests use the Next.js proxy, or fix CORS on the backend.",
+        );
+        return;
+      }
       setError("Login failed. Check your email and password.");
     } finally {
       setLoading(false);

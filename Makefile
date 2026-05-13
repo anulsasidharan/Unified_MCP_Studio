@@ -15,3 +15,6 @@ frontend-install:
 
 db-migrate:
 	cd backend && alembic upgrade head
+
+celery-worker:
+	cd backend && celery -A app.workers.celery_app worker -l info -Q codegen,deploy

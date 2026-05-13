@@ -33,9 +33,12 @@ app = FastAPI(
     redoc_url="/redoc" if settings.debug else None,
 )
 
+# In development, also allow any localhost / 127.0.0.1 origin with a port (covers odd .env).
+_dev_local_origin = r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=_dev_local_origin if settings.environment == "development" else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

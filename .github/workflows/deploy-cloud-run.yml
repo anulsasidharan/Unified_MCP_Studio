@@ -1,0 +1,30 @@
+# Phase 8 — OIDC deploy template (TASKS.md SI 27). Configure repository secrets before enabling:
+# - GCP_WORKLOAD_IDENTITY_PROVIDER
+# - GCP_SERVICE_ACCOUNT
+# - GCP_PROJECT_ID
+# - CLOUD_RUN_SERVICE
+# - CLOUD_RUN_REGION
+
+name: Deploy API (Cloud Run)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy placeholder
+        run: |
+          echo "Wire this job to build/push the backend image and run gcloud run deploy per docs/DEPLOYMENT.md"

@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { apiJson } from "@/lib/api";
+import { apiJson, type ApiErrorBody } from "@/lib/api";
 import { setStoredAccessToken } from "@/lib/auth-storage";
 
 type TokenResponse = { access_token: string; token_type: string };
@@ -38,7 +38,40 @@ export default function RegisterPage() {
       router.push("/");
       router.refresh();
     } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message === "Failed to fetch" || message.includes("NetworkError")) {
+        setError(
+          "Could not reach the API. Start the backend (uvicorn on port 8000). For local dev, clear NEXT_PUBLIC_API_BASE_URL in frontend/.env.local so /api/v1 is proxied by Next.js, or fix CORS_ORIGINS on the backend and restart it.",
+        );
+        return;
+      }
       const status = (err as Error & { status?: number }).status;
+      const body = (err as Error & { body?: unknown }).body as ApiErrorBody | undefined;
+      const apiMessage = body?.error?.message;
+      if (apiMessage) {
+        setError(apiMessage);
+        return;
+      }
+      const rawDetail = (body as { detail?: unknown } | undefined)?.detail;
+      const detailStr =
+        typeof rawDetail === "string"
+          ? rawDetail
+          : Array.isArray(rawDetail)
+            ? rawDetail
+                .map((d) =>
+                  typeof d === "object" && d && "msg" in d
+                    ? String((d as { msg: unknown }).msg)
+                    : "",
+                )
+                .filter(Boolean)
+                .join(" ")
+            : "";
+      if (detailStr && status === 500) {
+        setError(
+          `Server error: ${detailStr}. Check the backend terminal and database (PostgreSQL + alembic upgrade head).`,
+        );
+        return;
+      }
       if (status === 409) {
         setError("An account with this email already exists.");
       } else {

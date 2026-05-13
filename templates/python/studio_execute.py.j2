@@ -1,0 +1,37 @@
+"""CLI helper for sandbox execution (invoked by Unified MCP Studio API)."""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import importlib
+import json
+import sys
+
+
+def main() -> int:
+    p = argparse.ArgumentParser()
+    p.add_argument("tool_module", help="Module path, e.g. generated_mcp.tools.hello")
+    p.add_argument("arguments_json", help="JSON object string")
+    args = p.parse_args()
+    try:
+        payload = json.loads(args.arguments_json)
+    except json.JSONDecodeError as exc:
+        print(json.dumps({"ok": False, "error": f"invalid json: {exc}"}))
+        return 2
+    mod = importlib.import_module(args.tool_module)
+    run = getattr(mod, "run", None)
+    if run is None:
+        print(json.dumps({"ok": False, "error": "run() not found"}))
+        return 3
+
+    async def _call() -> object:
+        return await run(payload)
+
+    out = asyncio.run(_call())
+    print(json.dumps({"ok": True, "result": out}, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
