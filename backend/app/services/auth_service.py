@@ -1,9 +1,10 @@
 """User registration and authentication."""
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
 from app.schemas.auth import UserLogin, UserRegister
@@ -34,6 +35,16 @@ async def register_user(db: AsyncSession, body: UserRegister) -> tuple[User, str
             "An account with this email already exists.",
             status_code=409,
         ) from exc
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        hint = (
+            "Check that PostgreSQL is running "
+            "(e.g. docker compose up -d postgres from the repo root), "
+            "DATABASE_URL in backend/.env matches it, and migrations are applied: "
+            "cd backend && alembic upgrade head."
+        )
+        detail = f"{hint} ({type(exc).__name__}: {exc})" if settings.debug else hint
+        raise AuthError("DB_UNAVAILABLE", detail, status_code=503) from exc
     await db.refresh(user)
     token = create_access_token(user.id)
     return user, token

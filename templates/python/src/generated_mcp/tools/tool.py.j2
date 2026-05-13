@@ -1,0 +1,15 @@
+"""Tool module — {{ tool.name }}"""
+
+from __future__ import annotations
+
+from typing import Any
+
+TOOL_META = {
+    "name": {{ tool.name | tojson }},
+    "description": {{ (tool.description or "") | tojson }},
+    "input_schema": {{ tool.input_schema | tojson }},
+}
+
+
+async def run(arguments: dict[str, Any]) -> Any:
+{{ tool.handler_code }}

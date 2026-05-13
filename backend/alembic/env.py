@@ -7,8 +7,17 @@ from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine import Connection
 
 from app.config import settings
-from app.models import Base  # noqa: F401 — register models
-from app.models.user import User  # noqa: F401
+from app.models import (  # noqa: F401 — register metadata
+    Base,
+    Deployment,
+    LibraryTemplate,
+    Project,
+    Prompt,
+    Resource,
+    TestCase,
+    Tool,
+    User,
+)
 
 config = context.config
 if config.config_file_name is not None:

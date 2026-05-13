@@ -2,12 +2,17 @@
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.library_template import LibraryTemplate
+    from app.models.project import Project
 
 
 class User(Base):
@@ -32,4 +37,15 @@ class User(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    projects: Mapped[list["Project"]] = relationship(
+        "Project",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    authored_templates: Mapped[list["LibraryTemplate"]] = relationship(
+        "LibraryTemplate",
+        back_populates="author",
+        foreign_keys="LibraryTemplate.author_id",
     )
