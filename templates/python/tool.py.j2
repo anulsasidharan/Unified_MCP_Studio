@@ -1,0 +1,12 @@
+"""Handler for the '{{ tool.name }}' tool."""
+
+from typing import Any
+
+
+async def handle(arguments: dict[str, Any]) -> str:
+{% if tool.handler_code and tool.handler_code.strip() %}
+{{ tool.handler_code | indent(4, first=True) }}
+{% else %}
+    # TODO: implement this tool handler
+    return f"Tool '{{ tool.name }}' called with: {arguments}"
+{% endif %}

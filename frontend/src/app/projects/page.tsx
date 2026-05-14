@@ -100,16 +100,30 @@ export default function ProjectsPage() {
           </button>
         </form>
       ) : (
-        <button
-          onClick={() => setCreating(true)}
-          className="self-start rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-950"
-        >
-          + New project
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setCreating(true)}
+            className="rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-950"
+          >
+            + New project
+          </button>
+          <Link
+            href="/templates#instantiate"
+            className="rounded-md border border-zinc-600 px-4 py-2 text-sm font-medium text-zinc-100 hover:border-zinc-400 hover:bg-zinc-900"
+          >
+            Start from template
+          </Link>
+        </div>
       )}
 
       {projects.length === 0 && !error && (
-        <p className="text-sm text-zinc-500">No projects yet — create one above.</p>
+        <p className="text-sm text-zinc-500">
+          No projects yet — create one above, or{" "}
+          <Link href="/templates#instantiate" className="text-zinc-300 underline underline-offset-4 hover:text-white">
+            start from a library template
+          </Link>{" "}
+          to open the designer with starter tools.
+        </p>
       )}
 
       <ul className="flex flex-col gap-3">

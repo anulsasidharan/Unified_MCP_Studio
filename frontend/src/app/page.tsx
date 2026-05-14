@@ -63,7 +63,7 @@ export default function HomePage() {
       <section className="mt-12 rounded-xl border border-zinc-800 p-6">
         <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Quick start</p>
         <ol className="mt-4 flex flex-col gap-2 text-sm text-zinc-400">
-          <li><span className="text-zinc-200">1.</span> Go to <Link href="/projects" className="text-zinc-200 underline underline-offset-4 hover:text-white">Projects</Link> and create a new project (Python or TypeScript).</li>
+          <li><span className="text-zinc-200">1.</span> Go to <Link href="/templates#instantiate" className="text-zinc-200 underline underline-offset-4 hover:text-white">Templates</Link> to start from a library project, or open <Link href="/projects" className="text-zinc-200 underline underline-offset-4 hover:text-white">Projects</Link> and create a blank one (Python or TypeScript).</li>
           <li><span className="text-zinc-200">2.</span> Open the project and click <span className="text-zinc-200">Visual designer</span>.</li>
           <li><span className="text-zinc-200">3.</span> Add Tools, Resources, and Prompts from the left sidebar.</li>
           <li><span className="text-zinc-200">4.</span> Click any node to edit its name, code, and schema in the detail panel.</li>

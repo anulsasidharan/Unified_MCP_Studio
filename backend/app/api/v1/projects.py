@@ -9,7 +9,19 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.project import Project
 from app.models.user import User
-from app.schemas.project import ProjectCreate, ProjectPublic, ProjectUpdate
+from app.schemas.project import (
+    CatalogBlueprintImport,
+    ProjectCreate,
+    ProjectFromCatalogBlueprintCreate,
+    ProjectFromTemplateCreate,
+    ProjectPublic,
+    ProjectUpdate,
+)
+from app.services.catalog_blueprint_service import (
+    create_project_from_blueprint_dict,
+    create_project_from_catalog_blueprint_id,
+)
+from app.services.template_project_service import create_project_from_library_template
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -58,6 +70,62 @@ async def create_project(
     await db.commit()
     await db.refresh(project)
     return project
+
+
+@router.post(
+    "/from-template",
+    response_model=ProjectPublic,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_project_from_template(
+    body: ProjectFromTemplateCreate,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Project:
+    return await create_project_from_library_template(
+        db,
+        user_id=current.id,
+        template_id=body.template_id,
+        project_name=body.name,
+    )
+
+
+@router.post(
+    "/from-catalog-blueprint",
+    response_model=ProjectPublic,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_project_from_catalog_blueprint(
+    body: ProjectFromCatalogBlueprintCreate,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Project:
+    return await create_project_from_catalog_blueprint_id(
+        db,
+        user_id=current.id,
+        blueprint_id=body.blueprint_id,
+        project_name=body.name,
+    )
+
+
+@router.post(
+    "/from-blueprint-export",
+    response_model=ProjectPublic,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_project_from_blueprint_export(
+    body: CatalogBlueprintImport,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Project:
+    raw = body.model_dump()
+    project_name = raw.pop("project_name", None)
+    return await create_project_from_blueprint_dict(
+        db,
+        user_id=current.id,
+        blueprint=raw,
+        project_name=project_name,
+    )
 
 
 @router.get("/{project_id}", response_model=ProjectPublic)

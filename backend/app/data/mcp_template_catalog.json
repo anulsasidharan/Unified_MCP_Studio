@@ -1,0 +1,1472 @@
+{
+  "version": 1,
+  "blueprints": [
+    {
+      "id": "basic-echo-json",
+      "tier": "basic",
+      "name": "Echo and ping",
+      "tagline": "Teach MCP request/response with a trivial JSON echo tool.",
+      "category": "learning",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Ideal first server: the model calls a single tool with arbitrary JSON and receives the same payload wrapped with server metadata.",
+      "design": "Expose one `echo` tool whose input schema is a generic object plus optional string `label`. Handler returns `{ receivedAt, label, payload }`. Add `ping` returning `{ ok: true, version }` for health checks. Keep transport stdio only. Validate maximum JSON depth/size in handler before echo to avoid abuse. Log only aggregate counts, not payloads, in production.",
+      "suggestedTools": [
+        "echo",
+        "ping"
+      ],
+      "extensionIdeas": "Add optional JSON Schema validation against a user-supplied schema resource.",
+      "risks": "Echoing secrets from prompts can leak into logs if logging is misconfigured."
+    },
+    {
+      "id": "basic-math-sandbox",
+      "tier": "basic",
+      "name": "Safe math evaluator",
+      "tagline": "Evaluate arithmetic expressions without `eval`.",
+      "category": "utilities",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Agents frequently need deterministic calculations for pricing, sizing, or scoring without hallucinating numbers.",
+      "design": "Use `ast` parsing in Python to allow only numeric literals and operators (+ - * / **, parentheses). Reject names, attribute access, imports. Return both float and rational string for precision-sensitive cases. Surface parse errors as structured tool errors. Optional second tool `convert_units` with a static conversion table.",
+      "suggestedTools": [
+        "evaluate_expression",
+        "convert_units"
+      ],
+      "extensionIdeas": "Wire a tiny test matrix of golden expressions in project test cases.",
+      "risks": "Never fall back to `eval`; whitelist grammar only."
+    },
+    {
+      "id": "basic-id-and-tokens",
+      "tier": "basic",
+      "name": "UUID and token helpers",
+      "tagline": "Generate UUIDv4, nanoid-style strings, and random bytes (hex).",
+      "category": "security-basics",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Useful for correlating runs, creating draft resource IDs, or populating forms in automation flows.",
+      "design": "Tools: `uuid_v4`, `random_hex` with `bytes` capped (e.g. max 64), `slug_from_title` with unicode normalization. All generation uses crypto RNG. Return counts when batching (`n` parameter with hard cap). Document entropy guarantees in tool descriptions.",
+      "suggestedTools": [
+        "uuid_v4",
+        "random_hex",
+        "slug_from_title"
+      ],
+      "extensionIdeas": "Add optional base32 Crockford encoding for human-readable IDs.",
+      "risks": "Rate-limit batch generation if exposed publicly."
+    },
+    {
+      "id": "basic-codec-suite",
+      "tier": "basic",
+      "name": "Base64 and hex codecs",
+      "tagline": "Encode/decode text and small binary blobs safely.",
+      "category": "utilities",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Agents working with APIs, webhooks, or embedded payloads often need reversible encodings without leaving the MCP host.",
+      "design": "Provide `base64_encode`, `base64_decode`, `hex_encode`, `hex_decode` with max input length enforcement. Decode failures return typed errors. Never write to disk; memory-only. Optionally add `crc32` for quick integrity checks on text.",
+      "suggestedTools": [
+        "base64_encode",
+        "base64_decode",
+        "hex_encode",
+        "hex_decode"
+      ],
+      "extensionIdeas": "Add gzip+base64 helper for compress-then-encode with size ceiling.",
+      "risks": "Decoding untrusted base64 can allocate large buffers—enforce strict size caps."
+    },
+    {
+      "id": "basic-json-tools",
+      "tier": "basic",
+      "name": "JSON lint, format, validate",
+      "tagline": "Pretty-print JSON and validate against a JSON Schema.",
+      "category": "data",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Designers often paste malformed JSON from logs; this MCP normalizes and validates before codegen or storage.",
+      "design": "Tools: `format_json` (indent option), `minify_json`, `validate_json_schema` taking `instance` and `schema` objects. Use a vetted validator library with `unsafe` modes disabled. Return pointer-style error paths for schema failures to help the model fix documents.",
+      "suggestedTools": [
+        "format_json",
+        "minify_json",
+        "validate_json_schema"
+      ],
+      "extensionIdeas": "Add `json_merge_patch` for RFC7396 style merges with conflict reporting.",
+      "risks": "Large JSON can OOM—enforce byte limits per request."
+    },
+    {
+      "id": "basic-time-and-tz",
+      "tier": "basic",
+      "name": "Timestamp and timezone utilities",
+      "tagline": "Convert between Unix epoch, ISO-8601, and named time zones.",
+      "category": "utilities",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Scheduling, log correlation, and incident timelines need reliable time conversions without external APIs.",
+      "design": "Tools: `parse_iso`, `to_epoch`, `from_epoch`, `shift_tz` using zoneinfo/tzdata. Reject ambiguous local times explicitly. Return canonical ISO with offset. Include `now_utc` for deterministic tests with injectable clock in unit tests (design note only).",
+      "suggestedTools": [
+        "parse_iso",
+        "to_epoch",
+        "from_epoch",
+        "shift_tz",
+        "now_utc"
+      ],
+      "extensionIdeas": "Add business-day add/subtract with a static holiday list parameter.",
+      "risks": "DST edge cases must be documented in tool descriptions to avoid silent shifts."
+    },
+    {
+      "id": "basic-url-parse",
+      "tier": "basic",
+      "name": "URL builder and normalizer",
+      "tagline": "Parse URLs, merge query params, and validate schemes.",
+      "category": "web",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Constructing signed webhook URLs or deep links is error-prone for LLMs; structured URL tools reduce mistakes.",
+      "design": "Implement `parse_url` returning components, `merge_query` with sorted keys for stable output, `strip_credentials` for logging-safe views. Allowlist schemes (http, https, file optional). Reject javascript: and data: schemes outright.",
+      "suggestedTools": [
+        "parse_url",
+        "merge_query",
+        "strip_credentials"
+      ],
+      "extensionIdeas": "Add `to_punycode` / `from_punycode` for internationalized domains.",
+      "risks": "Never auto-fetch URLs in basic tier—keep network out of scope."
+    },
+    {
+      "id": "basic-markdown-frontmatter",
+      "tier": "basic",
+      "name": "Markdown front-matter extractor",
+      "tagline": "Split YAML/TOML front matter from markdown body for docs pipelines.",
+      "category": "content",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Documentation agents need structured metadata (title, tags) separate from prose bodies.",
+      "design": "Tool `split_frontmatter` reads a markdown string, detects delimiter `---`, parses YAML with safe loader (no arbitrary objects), returns `{ meta, body }`. Second tool `strip_code_fences` optionally removes fenced blocks for summarization. Cap input size.",
+      "suggestedTools": [
+        "split_frontmatter",
+        "strip_code_fences"
+      ],
+      "extensionIdeas": "Support TOML front matter via a bounded parser.",
+      "risks": "YAML anchors can be abused—disable them in loader settings."
+    },
+    {
+      "id": "basic-text-stats",
+      "tier": "basic",
+      "name": "Text statistics",
+      "tagline": "Word counts, reading time estimates, and simple readability hints.",
+      "category": "nlp-lite",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Content workflows need quick metrics without shipping full NLP models.",
+      "design": "Tools: `word_count` with unicode word boundaries, `sentence_count`, `estimate_reading_time` using configurable WPM, `ngram_preview` for top bigrams (local only). No external calls. Return histogram optional for character classes.",
+      "suggestedTools": [
+        "word_count",
+        "sentence_count",
+        "estimate_reading_time",
+        "ngram_preview"
+      ],
+      "extensionIdeas": "Add language-agnostic syllable proxy for rough grade level.",
+      "risks": "Do not claim clinical readability scores—keep disclaimers in descriptions."
+    },
+    {
+      "id": "basic-fake-deterministic",
+      "tier": "basic",
+      "name": "Deterministic fake records",
+      "tagline": "Generate reproducible placeholder rows for UI mocks and tests.",
+      "category": "testing",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Product teams need GDPR-safe synthetic rows keyed by a seed for reproducible screenshots.",
+      "design": "Tool `fake_records` accepts `seed`, `count`, `shape` describing fields (string/email/int/enum). Use a portable PRNG (mulberry32) to derive values. No real PII patterns (avoid real TLDs if possible). Export JSON rows only.",
+      "suggestedTools": [
+        "fake_records"
+      ],
+      "extensionIdeas": "Mirror CSV output as second tool with RFC4180 quoting.",
+      "risks": "Clearly label output as synthetic in the tool response text."
+    },
+    {
+      "id": "basic-color-convert",
+      "tier": "basic",
+      "name": "Color conversions",
+      "tagline": "Convert HEX ↔ RGB ↔ HSL and compute contrast ratios.",
+      "category": "design",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "UI iteration chats need accessible contrast checks quickly.",
+      "design": "Tools: `hex_to_rgb`, `rgb_to_hex`, `relative_luminance`, `contrast_ratio` following WCAG. Clamp channels, validate ranges. Return both float and rounded ratios. Document formula version in description.",
+      "suggestedTools": [
+        "hex_to_rgb",
+        "rgb_to_hex",
+        "relative_luminance",
+        "contrast_ratio"
+      ],
+      "extensionIdeas": "Add named palette suggestions from a static safe palette table.",
+      "risks": "Do not claim calibrated color accuracy for HDR colorspaces."
+    },
+    {
+      "id": "basic-regex-smoke",
+      "tier": "basic",
+      "name": "Bounded regex tester",
+      "tagline": "Run a regex against haystack with step limits and timeouts.",
+      "category": "utilities",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Debugging log parsers is common; this keeps regex execution bounded in-process.",
+      "design": "Use engine with linear-time mode or RE2 if available; otherwise enforce max steps / max matches / timeout. Tools: `regex_test` returning match spans, `regex_replace` with replace limit. Reject catastrophic patterns via pre-scan heuristics where possible.",
+      "suggestedTools": [
+        "regex_test",
+        "regex_replace"
+      ],
+      "extensionIdeas": "Expose named capture group extraction as structured JSON.",
+      "risks": "Catastrophic backtracking risk—document limits prominently."
+    },
+    {
+      "id": "basic-csv-peek",
+      "tier": "basic",
+      "name": "CSV shape inspector",
+      "tagline": "Infer delimiter, headers, and preview rows without full parse of huge files.",
+      "category": "data",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Agents analyzing tabular uploads need schema guesses before SQL load.",
+      "design": "Accept CSV string (not path) capped by bytes. Tools: `sniff_dialect`, `preview_rows`, `validate_rectangular`. Use csv module with sane limits on field size. Return inferred types per column as heuristic strings only.",
+      "suggestedTools": [
+        "sniff_dialect",
+        "preview_rows",
+        "validate_rectangular"
+      ],
+      "extensionIdeas": "Add `hash_columns` to fingerprint column names for drift detection.",
+      "risks": "Do not execute formulas starting with = in cells—strip or escape."
+    },
+    {
+      "id": "basic-slugify",
+      "tier": "basic",
+      "name": "Slug and filename sanitizer",
+      "tagline": "Produce URL-safe slugs and Windows/macOS safe filenames.",
+      "category": "filesystem-lite",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Downstream build scripts need stable artifact names from human titles.",
+      "design": "Tools: `slugify_unicode`, `truncate_middle`, `ensure_extension`. Normalize NFKC, replace disallowed chars, collapse dashes. Reserved Windows device names blocked. Max length enforced.",
+      "suggestedTools": [
+        "slugify_unicode",
+        "truncate_middle",
+        "ensure_extension"
+      ],
+      "extensionIdeas": "Add collision avoidance suffix `_2`, `_3` based on optional counter param.",
+      "risks": "Never accept absolute paths—strings only."
+    },
+    {
+      "id": "basic-hash-text",
+      "tier": "basic",
+      "name": "Text hashing",
+      "tagline": "SHA-256 / SHA-384 digests of UTF-8 strings for cache keys.",
+      "category": "security-basics",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Deduplication and cache addressing often need deterministic hashes without shipping files.",
+      "design": "Tools: `sha256_hex`, `sha384_hex` with optional `salt` parameter mixed via HMAC pattern. Never hash secrets provided by user without warning in description. Constant-time compare helper optional for MAC tags.",
+      "suggestedTools": [
+        "sha256_hex",
+        "sha384_hex"
+      ],
+      "extensionIdeas": "Add BLAKE2b as optional fast non-password hashing.",
+      "risks": "Discourage password hashing in descriptions—wrong tool for that."
+    },
+    {
+      "id": "basic-yaml-json",
+      "tier": "basic",
+      "name": "YAML ↔ JSON conversion",
+      "tagline": "Parse YAML to JSON and stringify JSON to YAML with safe options.",
+      "category": "data",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Config agents juggling Kubernetes manifests need conversions without kubectl.",
+      "design": "Use safe_load equivalents, disable arbitrary Python types, depth limits. Tools: `yaml_to_json`, `json_to_yaml`. Report line/column on parse errors.",
+      "suggestedTools": [
+        "yaml_to_json",
+        "json_to_yaml"
+      ],
+      "extensionIdeas": "Add `strip_comments` preserving structure where possible.",
+      "risks": "YAML can execute types in unsafe loaders—keep loader strict."
+    },
+    {
+      "id": "basic-pii-mask",
+      "tier": "basic",
+      "name": "PII masking for logs",
+      "tagline": "Redact emails, phone patterns, and credit card-like sequences in text blobs.",
+      "category": "privacy",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Before sending logs/snippets to an LLM vendor, operators want quick masking.",
+      "design": "Tools: `mask_emails`, `mask_phones`, `mask_cards` using regex with Luhn check for cards. Return mapping table optional (off by default) to avoid leaking originals side channel. Cap input size.",
+      "suggestedTools": [
+        "mask_emails",
+        "mask_phones",
+        "mask_cards"
+      ],
+      "extensionIdeas": "Add configurable allowlist domains for support emails.",
+      "risks": "Masking is heuristic—not legal compliance alone."
+    },
+    {
+      "id": "basic-phone-normalize",
+      "tier": "basic",
+      "name": "Phone number normalization",
+      "tagline": "Parse to E.164 using libphonenumber metadata subset or full lib if bundled.",
+      "category": "utilities",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "CRM prompts need canonical phone formats for dedupe keys.",
+      "design": "Tool `normalize_phone` with `default_region` parameter. Return `e164`, `valid`, `type` (mobile/fixed line unknown). Invalid inputs return structured errors, not exceptions text.",
+      "suggestedTools": [
+        "normalize_phone",
+        "format_national"
+      ],
+      "extensionIdeas": "Add `compare_loose` for fuzzy dedupe suggestions.",
+      "risks": "Metadata updates require dependency bump discipline."
+    },
+    {
+      "id": "basic-http-status-catalog",
+      "tier": "basic",
+      "name": "HTTP status reference",
+      "tagline": "Lookup meaning, retryability, and caching implications of status codes.",
+      "category": "web",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Junior agents debugging API failures benefit from structured guidance baked into tools.",
+      "design": "Static table keyed by code returning `{ name, retryable, idempotent_retry, cacheable }`. Tool `explain_status` and `suggest_backoff` with exponential table (no network).",
+      "suggestedTools": [
+        "explain_status",
+        "suggest_backoff"
+      ],
+      "extensionIdeas": "Link to MDN anchors in description strings for human follow-up.",
+      "risks": "Informational only—not a substitute for server-specific semantics."
+    },
+    {
+      "id": "basic-stack-trace-parse",
+      "tier": "basic",
+      "name": "Stack trace frame parser",
+      "tagline": "Extract `{ file, line, fn }` frames from common JVM/Node/Python traces.",
+      "category": "devtools",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Support engineers paste traces into chat; structured frames help triage.",
+      "design": "Tool `parse_stack` with `flavor` enum. Return ordered frames, detect innermost application frames heuristically. Never execute code. Second tool `collapse_duplicates` for repeated frames.",
+      "suggestedTools": [
+        "parse_stack",
+        "collapse_duplicates"
+      ],
+      "extensionIdeas": "Add Go/Rust regex flavors as additional parsers.",
+      "risks": "Paths may contain sensitive directory names—warn in tool doc."
+    },
+    {
+      "id": "basic-jwt-decode-inspect",
+      "tier": "basic",
+      "name": "JWT inspector (decode only)",
+      "tagline": "Decode JWT header/payload without verification for debugging.",
+      "category": "security-basics",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Developers need to read `aud`, `exp`, `kid` quickly when fixing auth issues.",
+      "design": "Tool `decode_jwt` splits segments, base64url-decodes JSON, validates JSON shape. **No** signature verification tool included—description states trust implications. Reject `none` alg with explicit error.",
+      "suggestedTools": [
+        "decode_jwt"
+      ],
+      "extensionIdeas": "Pair with separate verified flow in intermediate tier.",
+      "risks": "Misuse can encourage trusting unverified tokens—emphasize risk text."
+    },
+    {
+      "id": "basic-text-diff",
+      "tier": "basic",
+      "name": "Unified diff for strings",
+      "tagline": "Produce unified diff hunks between two text blobs for code review assistance.",
+      "category": "devtools",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Agents summarizing PR impact need a compact diff without shelling to git.",
+      "design": "Use Myers diff with max hunk size and line count caps. Tool `unified_diff` with context lines parameter. Optional `word_diff` for prose. Return patch text only.",
+      "suggestedTools": [
+        "unified_diff",
+        "word_diff"
+      ],
+      "extensionIdeas": "Add `diff_stats` for additions/deletions counts.",
+      "risks": "Large texts are CPU heavy—enforce caps."
+    },
+    {
+      "id": "basic-ip-validation",
+      "tier": "basic",
+      "name": "IP address validation",
+      "tagline": "Validate IPv4/IPv6, CIDR membership checks without DNS.",
+      "category": "network-lite",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Access-control drafting in chat benefits from boolean checks on literals.",
+      "design": "Tools: `parse_ipv4`, `parse_ipv6`, `cidr_contains`. Use bigint or JS libraries for IPv6 math carefully. Return normalized compressed IPv6 string.",
+      "suggestedTools": [
+        "parse_ipv4",
+        "parse_ipv6",
+        "cidr_contains"
+      ],
+      "extensionIdeas": "Add `summarize_cidr` for host count (bounded ranges only).",
+      "risks": "No reverse DNS—avoid data exfil vectors."
+    },
+    {
+      "id": "basic-mime-from-ext",
+      "tier": "basic",
+      "name": "MIME type from extension",
+      "tagline": "Map filename extensions to IANA-like MIME types using a static table.",
+      "category": "web",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Upload pipelines need quick content-type guesses before sniffing bytes.",
+      "design": "Static JSON map loaded at startup. Tools: `guess_mime`, `list_exts_for_mime` reverse lookup. Unknown returns `application/octet-stream`.",
+      "suggestedTools": [
+        "guess_mime",
+        "list_exts_for_mime"
+      ],
+      "extensionIdeas": "Allow vendor subtree `x-` overrides via config object in MCP config.",
+      "risks": "Sniffing bytes is more accurate—document limitation."
+    },
+    {
+      "id": "basic-cron-humanize",
+      "tier": "basic",
+      "name": "Cron expression explainer",
+      "tagline": "Parse standard 5-field cron into human-readable constraints.",
+      "category": "ops-lite",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "SRE chats translating scheduler snippets need safe offline parsing.",
+      "design": "Tool `explain_cron` supporting common macros (`@hourly`). Validate ranges. Optional `next_n_runs` with bounded simulation using UTC clock. Cap N.",
+      "suggestedTools": [
+        "explain_cron",
+        "next_n_runs"
+      ],
+      "extensionIdeas": "Support Quartz 6-field as optional mode with explicit flag.",
+      "risks": "DST issues for local tz—prefer UTC in docs."
+    },
+    {
+      "id": "basic-branch-name",
+      "tier": "basic",
+      "name": "Git branch name sanitizer",
+      "tagline": "Turn arbitrary titles into valid, unique-ish branch names.",
+      "category": "devtools",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Issue titles become branch names in many flows; sanitization prevents git errors.",
+      "design": "Lowercase, replace spaces with `-`, strip punctuation except `/` disallow, max length 60. Tool `sanitize_branch` and `is_valid_ref` for education.",
+      "suggestedTools": [
+        "sanitize_branch",
+        "is_valid_ref"
+      ],
+      "extensionIdeas": "Add conventional commit scope sanitizer sibling tool.",
+      "risks": "Does not check remote collisions."
+    },
+    {
+      "id": "int-http-json-client",
+      "tier": "intermediate",
+      "name": "Authenticated JSON HTTP client",
+      "tagline": "GET/POST JSON with bearer token sourced from env, timeouts, and redacted logs.",
+      "category": "integration",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Most internal tools wrap REST services; this template encodes safe defaults for AI-driven automation.",
+      "design": "Single `request` tool taking `method`, `url`, `headers`, `jsonBody`, `timeoutMs`. Pull bearer from `process.env.MCP_HTTP_TOKEN`. Enforce allowlist hostnames via config in MCP server metadata. Cap response bytes; truncate with hash of full body id. Structured errors for HTTP status and network codes.",
+      "suggestedTools": [
+        "http_json_request"
+      ],
+      "extensionIdeas": "Add retry with jitter only for idempotent methods.",
+      "risks": "SSRF risk—hostname allowlist mandatory; never pass raw user URL without validation layer."
+    },
+    {
+      "id": "int-paginated-fetch",
+      "tier": "intermediate",
+      "name": "Cursor-based pagination fetcher",
+      "tagline": "Follow `next` links or opaque cursors until budget or terminal.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Listing large collections (issues, orders) needs disciplined pagination to avoid runaway token usage.",
+      "design": "Tool `fetch_all_pages` accepts `first_url`, `max_pages`, `max_records`, `cursor_json_path`. Uses httpx async with timeouts. Stops on 4xx except 429 with bounded retries respecting `Retry-After`. Accumulate items client-side with streaming discard to cap memory.",
+      "suggestedTools": [
+        "fetch_all_pages"
+      ],
+      "extensionIdeas": "Add `estimate_total` if API exposes total count header.",
+      "risks": "Respect robots/terms of target API—document user responsibility."
+    },
+    {
+      "id": "int-webhook-signature",
+      "tier": "intermediate",
+      "name": "Webhook HMAC verifier",
+      "tagline": "Verify GitHub/Stripe-like signatures with constant-time compare.",
+      "category": "security",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Inbound hook testing in dev environments often lacks a full framework.",
+      "design": "Tools: `verify_hmac_sha256` with `secret`, `payload`, `signature_hex`, optional `prefix` like `sha256=`. Use timing-safe compare. Second tool `parse_github_signature_headers` for convenience. Never log secrets.",
+      "suggestedTools": [
+        "verify_hmac_sha256",
+        "parse_github_signature_headers"
+      ],
+      "extensionIdeas": "Add Ed25519 verify variant for modern providers.",
+      "risks": "Rotating secrets requires dual-secret window—document pattern only here."
+    },
+    {
+      "id": "int-jira-readonly",
+      "tier": "intermediate",
+      "name": "Jira issue reader",
+      "tagline": "Fetch issue JSON and comments with PAT from env.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Support triage bots need structured fields without write risk.",
+      "design": "Tools: `get_issue`, `list_comments` using Jira REST v3. Base URL and email+token auth from env. Strip HTML bodies to markdown-lite via simple tag strip (bounded). Cache etag optional in-memory with TTL.",
+      "suggestedTools": [
+        "get_issue",
+        "list_comments"
+      ],
+      "extensionIdeas": "Add JQL search with `maxResults` cap.",
+      "risks": "PAT scopes must be read-only; warn about HTML injection in fields."
+    },
+    {
+      "id": "int-slack-post",
+      "tier": "intermediate",
+      "name": "Slack message poster",
+      "tagline": "Post to a channel with blocks JSON using bot token.",
+      "category": "integration",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Operational MCPs often notify channels when pipelines complete or need approval.",
+      "design": "Tool `post_message` with `channel`, `text`, optional `blocks`. Use chat.postMessage API. Validate `blocks` size. Map API errors to structured tool errors. Optional `lookup_user` by email with scoped token.",
+      "suggestedTools": [
+        "post_message",
+        "lookup_user"
+      ],
+      "extensionIdeas": "Add thread reply tool with `thread_ts`.",
+      "risks": "Token leakage through prompts—prefer env and never echo token back."
+    },
+    {
+      "id": "int-github-gist-read",
+      "tier": "intermediate",
+      "name": "GitHub gist reader",
+      "tagline": "Fetch public or authenticated gists as text for sharing repro snippets.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Education flows pull starter code from gists without cloning repos.",
+      "design": "Tools: `get_gist`, `list_gist_files` using token if present. Return filenames and truncated contents with `max_chars` per file. Respect rate limits with backoff.",
+      "suggestedTools": [
+        "get_gist",
+        "list_gist_files"
+      ],
+      "extensionIdeas": "Add `search_gists` for user's own gists only.",
+      "risks": "Private gist exposure—ensure auth scope minimal."
+    },
+    {
+      "id": "int-openapi-summarize",
+      "tier": "intermediate",
+      "name": "OpenAPI operation catalog",
+      "tagline": "Parse OpenAPI 3 JSON/YAML string and list operations grouped by tag.",
+      "category": "api-design",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Before codegen, agents need a compact map of paths and security requirements.",
+      "design": "Tool `list_operations` returning `{ method, path, operationId, tags, security }`. Cap operations count; warn on huge specs. Second tool `get_operation` for single operation schema subset.",
+      "suggestedTools": [
+        "list_operations",
+        "get_operation"
+      ],
+      "extensionIdeas": "Add `diff_operations` between two spec strings for migration notes.",
+      "risks": "Specs may be untrusted YAML—use safe parser settings."
+    },
+    {
+      "id": "int-s3-presign-pattern",
+      "tier": "intermediate",
+      "name": "S3 presigned URL pattern",
+      "tagline": "Design tools that mint GET/PUT URLs using SDK with session creds from env.",
+      "category": "cloud",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Artifact handoff between agents and humans often uses short-lived URLs instead of streaming bytes through the model.",
+      "design": "Tools: `presign_put`, `presign_get` with bucket allowlist, key prefix allowlist, TTL cap. Validate key does not contain `..` segments. Return URL + expiry epoch only.",
+      "suggestedTools": [
+        "presign_put",
+        "presign_get"
+      ],
+      "extensionIdeas": "Add multipart initiate/complete as separate advanced server.",
+      "risks": "Misconfigured bucket policies can expose data—pair with IAM guidance."
+    },
+    {
+      "id": "int-redis-kv",
+      "tier": "intermediate",
+      "name": "Redis string GET/SET with TTL",
+      "tagline": "Simple KV cache tools against Redis URL in env.",
+      "category": "data",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Session-scoped memoization for multi-step agent workflows reduces duplicate API calls.",
+      "design": "Use ioredis with TLS URL support. Tools: `cache_get`, `cache_set` with `ttlSeconds` max cap, `cache_delete`. Namespace keys with `mcp:{tenant}:` from config. Never accept arbitrary connection string from tool args.",
+      "suggestedTools": [
+        "cache_get",
+        "cache_set",
+        "cache_delete"
+      ],
+      "extensionIdeas": "Add `incr` with TTL refresh for rate counters.",
+      "risks": "Redis command injection not applicable but key cardinality can explode—enforce key length and count quotas."
+    },
+    {
+      "id": "int-postgres-readonly",
+      "tier": "intermediate",
+      "name": "PostgreSQL read replica queries",
+      "tagline": "Parameterized SELECT-only guard with statement timeout.",
+      "category": "database",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Analytics assistants need SQL access without mutation risk.",
+      "design": "Tool `select` taking `sql` and `params`. Reject multi-statement and non-SELECT via SQL parser or aggressive regex + EXPLAIN guard. Set `default_transaction_read_only=on` and `statement_timeout`. Row cap and byte cap on results.",
+      "suggestedTools": [
+        "select",
+        "explain_plan"
+      ],
+      "extensionIdeas": "Add `list_tables` using `information_schema` with allowlist schema.",
+      "risks": "SQL injection if parameterization bypassed—validate strictly."
+    },
+    {
+      "id": "int-notion-fetch",
+      "tier": "intermediate",
+      "name": "Notion page exporter",
+      "tagline": "Fetch page blocks and flatten to text/markdown-like structure.",
+      "category": "integration",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Research agents aggregate specs scattered in Notion.",
+      "design": "Tool `get_page_markdown` using Notion API with integration token env. Recursively fetch blocks with depth cap. Toggle toggles respected. Rate limit aware batching.",
+      "suggestedTools": [
+        "get_page_markdown",
+        "search_pages"
+      ],
+      "extensionIdeas": "Add database row query tool with column allowlist.",
+      "risks": "Notion content may contain secrets—apply org DLP policies upstream."
+    },
+    {
+      "id": "int-linear-issues",
+      "tier": "intermediate",
+      "name": "Linear GraphQL issue search",
+      "tagline": "Search issues by team, state, and label with cost limits.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Engineering copilots need ticket context with less noise than full web UI.",
+      "design": "Single `graphql` tool discouraged—instead curated `search_issues` building a parameterized query. API key from env. Return slim issue objects. Cap nodes.",
+      "suggestedTools": [
+        "search_issues",
+        "get_issue"
+      ],
+      "extensionIdeas": "Add `post_comment` guarded behind feature flag config.",
+      "risks": "GraphQL complexity can spike costs—keep queries minimal."
+    },
+    {
+      "id": "int-google-calendar-freebusy",
+      "tier": "intermediate",
+      "name": "Calendar free/busy reader",
+      "tagline": "Query freebusy ranges for scheduling assistants.",
+      "category": "integration",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Meeting negotiation flows need busy blocks without exposing event titles if policy requires.",
+      "design": "OAuth access token from env refresh handled externally. Tool `freebusy` takes calendar ids list, timeMin/timeMax RFC3339. Returns busy arrays only. Optional `timezone` normalization.",
+      "suggestedTools": [
+        "freebusy"
+      ],
+      "extensionIdeas": "Add working hours intersection helper tool.",
+      "risks": "OAuth scopes must be least privilege; tokens are secrets."
+    },
+    {
+      "id": "int-sendgrid-template-mail",
+      "tier": "intermediate",
+      "name": "SendGrid templated email",
+      "tagline": "Send mail using dynamic template ID and data JSON.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Transactional notifications triggered by agent-observed events (with human approval patterns).",
+      "design": "Tool `send_template_email` with `to`, `template_id`, `dynamic_data`. API key env. Sandbox mode flag routes to sink address allowlist. Dry-run tool returns rendered size estimate without send.",
+      "suggestedTools": [
+        "send_template_email",
+        "dry_run_template"
+      ],
+      "extensionIdeas": "Add attachment stub rejecting attachments for safety by default.",
+      "risks": "Email abuse potential—rate limit and capture audit id from provider response."
+    },
+    {
+      "id": "int-twilio-sms",
+      "tier": "intermediate",
+      "name": "Twilio SMS notifier",
+      "tagline": "Send SMS to allowlisted E.164 numbers only.",
+      "category": "integration",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Paging on-call engineers from automated health checks.",
+      "design": "Tools: `send_sms` requiring `to` in allowlist config file path or embedded static list for demo. `status_lookup` for message SID. Credentials via env. Hard cap messages per day stored in Redis optional.",
+      "suggestedTools": [
+        "send_sms",
+        "status_lookup"
+      ],
+      "extensionIdeas": "Add voice call initiation as separate high-risk server.",
+      "risks": "SMS fraud and cost overruns—strict allowlist and quotas."
+    },
+    {
+      "id": "int-stripe-customer",
+      "tier": "intermediate",
+      "name": "Stripe customer lookup",
+      "tagline": "Retrieve customer and subscriptions read-only.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Support agents with scoped access need billing context without dashboard clicks.",
+      "design": "Secret key in env with restricted Stripe key. Tools: `get_customer`, `list_subscriptions`. Never return full card numbers; rely on Stripe objects. Log request ids only.",
+      "suggestedTools": [
+        "get_customer",
+        "list_subscriptions",
+        "list_invoices"
+      ],
+      "extensionIdeas": "Add `search_customers` by email hash if privacy tightened.",
+      "risks": "PCI scope minimization—prefer dashboard links for sensitive actions."
+    },
+    {
+      "id": "int-hubspot-contact",
+      "tier": "intermediate",
+      "name": "HubSpot CRM contact fetch",
+      "tagline": "Search contacts by email and return non-sensitive fields.",
+      "category": "integration",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Sales assistants need lifecycle stage and owner without exporting entire CRM.",
+      "design": "Private app token env. Tools: `find_contact_by_email`, `get_contact`. Field allowlist in server config to strip PII not needed. Rate limit wrapper.",
+      "suggestedTools": [
+        "find_contact_by_email",
+        "get_contact"
+      ],
+      "extensionIdeas": "Add `log_engagement` write tool behind RBAC config.",
+      "risks": "CRM data residency and consent—document enterprise policy hooks."
+    },
+    {
+      "id": "int-airtable-read",
+      "tier": "intermediate",
+      "name": "Airtable base read",
+      "tagline": "List records with view and filter formula capped.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Lightweight ops trackers often live in Airtable; agents read status boards.",
+      "design": "Tool `list_records` with `baseId`, `tableIdOrName`, `view`, `maxRecords`, `fields` allowlist. PAT in env. Validate formula length. Paginate offset loop with cap.",
+      "suggestedTools": [
+        "list_records",
+        "get_record"
+      ],
+      "extensionIdeas": "Add `meta_bases` discovery tool.",
+      "risks": "Formula injection less risky read-side but still validate syntax length."
+    },
+    {
+      "id": "int-es-query-helper",
+      "tier": "intermediate",
+      "name": "Elasticsearch query DSL builder",
+      "tagline": "Compose bool queries from structured constraints safely.",
+      "category": "data",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Observability copilots translate questions into DSL without pasting huge JSON by hand each time.",
+      "design": "Tools: `build_bool_query` from `must`, `filter`, `should` clause objects with whitelisted field names. `run_search` optional if ES URL in env with read-only role. Size caps.",
+      "suggestedTools": [
+        "build_bool_query",
+        "run_search"
+      ],
+      "extensionIdeas": "Add `kql_to_query` experimental translator with disclaimer.",
+      "risks": "Query cost explosions—enforce size and timeout."
+    },
+    {
+      "id": "int-docker-stats",
+      "tier": "intermediate",
+      "name": "Docker container stats reader",
+      "tagline": "Read `docker stats --no-stream` JSON via local socket (pattern).",
+      "category": "ops",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Local dev agents diagnose resource hogs on engineer laptops with structured numbers.",
+      "design": "Subprocess to `docker` CLI not ideal; prefer Docker SDK with unix socket, read-only. Tools: `list_running`, `inspect_stats`. Fail gracefully if daemon absent.",
+      "suggestedTools": [
+        "list_running",
+        "inspect_stats"
+      ],
+      "extensionIdeas": "Add `prune_images` as blocked stub explaining risk.",
+      "risks": "Exposes container names/env—sensitivity in shared hosts."
+    },
+    {
+      "id": "int-k8s-pod-list",
+      "tier": "intermediate",
+      "name": "Kubernetes pod lister",
+      "tagline": "List pods in namespace with field selector using kubeconfig from env path.",
+      "category": "ops",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Incident bots fetch pod phases and restart counts for quick summaries.",
+      "design": "Use official client with kubeconfig file path from `KUBECONFIG` env (not args). Tools: `list_pods`, `get_pod_logs` with tail line cap. Read-only cluster role binding assumed.",
+      "suggestedTools": [
+        "list_pods",
+        "get_pod_logs"
+      ],
+      "extensionIdeas": "Add `describe_events` for namespace events.",
+      "risks": "Logs may contain secrets—apply redaction filters optional."
+    },
+    {
+      "id": "int-terraform-plan-parse",
+      "tier": "intermediate",
+      "name": "Terraform JSON plan summarizer",
+      "tagline": "Parse `terraform show -json` output and summarize create/change/destroy counts.",
+      "category": "ops",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "CI comments summarizing plans reduce noise in PR threads.",
+      "design": "Tool `summarize_plan` reading plan JSON string (not executing terraform). Extract resource changes grouped by module. Cap resources listed; overflow counter.",
+      "suggestedTools": [
+        "summarize_plan",
+        "list_modules"
+      ],
+      "extensionIdeas": "Add `risk_flags` heuristics for destroy -create cycles.",
+      "risks": "Plans may embed sensitive values if not redacted—warn operators."
+    },
+    {
+      "id": "int-prometheus-query",
+      "tier": "intermediate",
+      "name": "Prometheus instant query",
+      "tagline": "Run PromQL instant queries against base URL with auth header.",
+      "category": "observability",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "SRE copilots fetch metric values for anomaly explanations.",
+      "design": "Tool `query` with `query`, `time`. API URL and bearer from env. Enforce max range by rejecting range queries in this template (instant only). Response size cap.",
+      "suggestedTools": [
+        "query",
+        "metadata_labels"
+      ],
+      "extensionIdeas": "Add `alerts` fetch from Alertmanager separate tool.",
+      "risks": "PromQL can be expensive—server-side limits vary; enforce client timeouts."
+    },
+    {
+      "id": "int-grafana-dashboard-list",
+      "tier": "intermediate",
+      "name": "Grafana dashboard search",
+      "tagline": "Search dashboards by tag and return uid/slug URLs.",
+      "category": "observability",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Navigate large Grafana installs by metadata instead of UI search.",
+      "design": "Service account token env. Tools: `search_dashboards`, `get_dashboard_json` with size cap and field stripping. Base URL from env.",
+      "suggestedTools": [
+        "search_dashboards",
+        "get_dashboard_json"
+      ],
+      "extensionIdeas": "Add `list_datasources` read-only for type discovery.",
+      "risks": "Dashboard JSON may include datasource UIDs tied to infra topology—sensitivity."
+    },
+    {
+      "id": "int-oauth-introspect",
+      "tier": "intermediate",
+      "name": "OAuth2 token introspection client",
+      "tagline": "Call RFC7662 introspection endpoint with client credentials.",
+      "category": "security",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Agents acting on behalf of users need to confirm token active/scopes before side effects.",
+      "design": "Tool `introspect` taking `token`, returns `{ active, scope, client_id, exp }`. Client id/secret from env. POST form-encoded. Cache negative results briefly optional.",
+      "suggestedTools": [
+        "introspect"
+      ],
+      "extensionIdeas": "Add `parse_jwt_scopes_unverified` helper for debugging only.",
+      "risks": "Introspection endpoints may log—coordinate with IdP owners."
+    },
+    {
+      "id": "int-graphql-github",
+      "tier": "intermediate",
+      "name": "GitHub GraphQL search",
+      "tagline": "Search issues/PRs with cost-aware query templates.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Developer experience bots mine GitHub without scraping HTML.",
+      "design": "Curated queries for `search` type ISSUE_PR with variables; cap `first`. PAT scopes documented. Map rateLimit cost field to throttle locally.",
+      "suggestedTools": [
+        "search_issues_prs",
+        "get_pull_request_files"
+      ],
+      "extensionIdeas": "Add `request_reviewers` write tool gated off by default.",
+      "risks": "Token scope creep risk—ship minimal PAT templates."
+    },
+    {
+      "id": "int-microsoft-graph-mail-read",
+      "tier": "intermediate",
+      "name": "Microsoft Graph mail read",
+      "tagline": "List recent messages metadata only from shared mailbox.",
+      "category": "integration",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Executive assistants summaries without downloading full MIME bodies by default.",
+      "design": "OAuth token env. Tools: `list_messages` returning id/subject/from/receivedDateTime only. `get_message_body` with max chars. Optional sensitivity label id if tenant supports.",
+      "suggestedTools": [
+        "list_messages",
+        "get_message_body"
+      ],
+      "extensionIdeas": "Add calendar events list variant reusing auth layer.",
+      "risks": "Mailbox confidentiality—enterprise DLP mandatory."
+    },
+    {
+      "id": "int-cloudflare-dns-read",
+      "tier": "intermediate",
+      "name": "Cloudflare DNS record reader",
+      "tagline": "List DNS records for zone id with token from env.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Infra agents verify propagation or detect stale A records during cutovers.",
+      "design": "Tool `list_dns_records` with pagination and type filter. Zone id from config not freeform user string if possible. Token scoped to DNS read.",
+      "suggestedTools": [
+        "list_dns_records"
+      ],
+      "extensionIdeas": "Add `purge_cache` behind dangerous=false default config.",
+      "risks": "DNS data reveals infra—treat as confidential."
+    },
+    {
+      "id": "adv-multitenant-routing",
+      "tier": "advanced",
+      "name": "Multi-tenant MCP router",
+      "tagline": "Route each tool call to tenant-specific backends using JWT tenant claim.",
+      "category": "platform",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Hosted MCP platforms must isolate customers while sharing one binary deployment.",
+      "design": "On `initialize`, read optional `tenantId` from auth claims injected by sidecar (design). Tool handlers first resolve `tenantContext` from validated JWT (signature verified upstream). Data plane calls include tenant id header. Separate connection pools per tenant in pool map with LRU cap. Audit log tool emits structured events to stdout for SIEM.",
+      "suggestedTools": [
+        "resolve_tenant",
+        "tenant_health",
+        "audit_event"
+      ],
+      "extensionIdeas": "Add per-tenant feature flag cache with TTL.",
+      "risks": "Mis-issued tokens cross tenants—verify signing keys rotation and audience."
+    },
+    {
+      "id": "adv-rate-limit-aggregator",
+      "tier": "advanced",
+      "name": "Rate-limited multi-API aggregator",
+      "tagline": "Combine several upstream JSON APIs with token bucket per host.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Research agents hit many providers; uncapped concurrency gets blocked or expensive.",
+      "design": "Async httpx client with per-host buckets persisted in Redis optional. Tools: `fan_out_get` accepting list of URLs with shared schema allowlist. Partial results with per-host error objects. Circuit breaker after consecutive failures.",
+      "suggestedTools": [
+        "fan_out_get",
+        "circuit_status"
+      ],
+      "extensionIdeas": "Add adaptive concurrency based on p95 latency estimates.",
+      "risks": "Still vulnerable to SSRF if allowlists weak—defense in depth required."
+    },
+    {
+      "id": "adv-circuit-breaker-http",
+      "tier": "advanced",
+      "name": "Circuit breaker HTTP toolpack",
+      "tagline": "Per-endpoint breaker states (closed/open/half-open) in memory + optional Redis.",
+      "category": "resilience",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Protect fragile internal services from retry storms initiated by LLM loops.",
+      "design": "Wrap fetch in breaker registry keyed by `serviceKey`. Expose `call` tool and `reset_breaker` admin-guarded. Half-open trial count configurable. Emit metrics counters for transitions.",
+      "suggestedTools": [
+        "cb_call",
+        "cb_reset",
+        "cb_status"
+      ],
+      "extensionIdeas": "Integrate with OpenTelemetry spans around attempts.",
+      "risks": "Reset tool misuse can prolong outages—RBAC on reset."
+    },
+    {
+      "id": "adv-event-inbox",
+      "tier": "advanced",
+      "name": "Inbox processor for durable events",
+      "tagline": "At-least-once consumer pattern with idempotent handlers keyed by event id.",
+      "category": "eventing",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Agents reacting to webhooks need dedupe and poison pill handling.",
+      "design": "Backed by Postgres table `inbox(event_id pk, payload, status)`. Tools: `enqueue_event` (internal), `process_next` transactional claiming, `quarantine_event`. Handler idempotency keys documented. Visibility timeout pattern.",
+      "suggestedTools": [
+        "process_next",
+        "quarantine_event",
+        "replay_event"
+      ],
+      "extensionIdeas": "Add outbox publisher sidecar pattern description in resources.",
+      "risks": "Poison messages can block if not quarantined—monitor queue depth."
+    },
+    {
+      "id": "adv-dag-runner",
+      "tier": "advanced",
+      "name": "YAML DAG workflow runner",
+      "tagline": "Execute acyclic steps with declared dependencies and typed outputs.",
+      "category": "automation",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Complex multi-tool agent routines become reproducible workflows checked into git.",
+      "design": "Parse YAML schema validating DAG. Topological sort. Each step maps to registered sub-tool name with input templating from prior outputs using JSONPath subset. Global timeout and per-step timeout. Persist run manifest to tmp with redaction.",
+      "suggestedTools": [
+        "run_workflow",
+        "validate_workflow",
+        "cancel_run"
+      ],
+      "extensionIdeas": "Add human approval step type emitting pending resource.",
+      "risks": "Turing-complete templating forbidden—keep JSONPath limited."
+    },
+    {
+      "id": "adv-rag-connector-pattern",
+      "tier": "advanced",
+      "name": "RAG ingestion connector pattern",
+      "tagline": "Chunk, hash, and enqueue documents for an external vector index.",
+      "category": "ai",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Enterprise RAG separates embedding from retrieval; MCP orchestrates ingestion side.",
+      "design": "Tools: `chunk_text` with semantic sliding window, `embed_and_upsert` calling configured HTTP embedding service with API key from env, `delete_by_source`. Store chunk table in Postgres with vector column optional. Strong content hash dedupe.",
+      "suggestedTools": [
+        "chunk_text",
+        "embed_and_upsert",
+        "delete_by_source"
+      ],
+      "extensionIdeas": "Add layout-aware PDF extractor behind sandbox worker—not in-process.",
+      "risks": "Embedding PII into vectors is hard to erase—classification step required."
+    },
+    {
+      "id": "adv-sql-guardrails",
+      "tier": "advanced",
+      "name": "SQL dialect guardrail analyzer",
+      "tagline": "Statically scan SQL for disallowed constructs before execution proxy.",
+      "category": "database",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "When LLM-generated SQL must run, a second line of defense beyond parameterization helps.",
+      "design": "Use parser (e.g. node-sql-parser) to build AST; ban `DELETE`, `UPDATE`, `INSERT`, DDL, comments tricks, multiple statements, `into outfile`. Tool `analyze_sql` returns violations with line refs. Pair with `explain_sql` passthrough to read replica only.",
+      "suggestedTools": [
+        "analyze_sql",
+        "format_sql_safe"
+      ],
+      "extensionIdeas": "Dialect modules plug-in via config.",
+      "risks": "Parser evasion attempts evolve—combine with DB roles read-only."
+    },
+    {
+      "id": "adv-mcp-fanout-proxy",
+      "tier": "advanced",
+      "name": "MCP child-server fan-out proxy",
+      "tagline": "Aggregate tools/resources from multiple downstream MCP processes.",
+      "category": "platform",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Composite agents want one connection while reusing specialized servers safely.",
+      "design": "Supervisor launches stdio children from allowlisted commands in config. Maps downstream tool names with `child::tool` prefix. Propagate cancellation. Health check cycles restart crashed children with backoff.",
+      "suggestedTools": [
+        "list_children",
+        "call_child_tool",
+        "child_health"
+      ],
+      "extensionIdeas": "Add streaming resource proxy for large artifacts.",
+      "risks": "Child servers are still process boundaries—resource accounting needed."
+    },
+    {
+      "id": "adv-rbac-tool-visibility",
+      "tier": "advanced",
+      "name": "RBAC-filtered tool catalog",
+      "tagline": "Expose different `list_tools` results based on OAuth scopes.",
+      "category": "security",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Enterprise admins want least-privilege tool exposure per principal.",
+      "design": "On session bind, map scopes→tool allowlist. Wrap list_tools handler to filter. `call_tool` verifies scope again. Structured `permission_denied` errors. Optional audit log of denied attempts rate-limited.",
+      "suggestedTools": [
+        "list_tools_scoped",
+        "explain_permissions"
+      ],
+      "extensionIdeas": "Integrate with OPA policy bundle fetch periodically.",
+      "risks": "Scope enumeration bugs could hide tools but leaks via timing—document."
+    },
+    {
+      "id": "adv-audit-stream",
+      "tier": "advanced",
+      "name": "Audit log streaming tool",
+      "tagline": "Append-only JSONL audit events for sensitive tool calls.",
+      "category": "compliance",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Regulated industries require immutable-ish audit trails for AI actions.",
+      "design": "Tool `record_audit` writes to GCS object or local volume with hash chain (prev_hash, row). Reads disallowed via MCP; separate SIEM ingestion. Include actor, tenant, tool, arguments_digest, outcome.",
+      "suggestedTools": [
+        "record_audit",
+        "verify_chain_tail"
+      ],
+      "extensionIdeas": "Ship KMS-signed chain head rotation design in README resource.",
+      "risks": "Local volumes can be tampered—prefer remote immutable storage."
+    },
+    {
+      "id": "adv-pii-scan-json",
+      "tier": "advanced",
+      "name": "Structured PII scanner",
+      "tagline": "Detect emails, phones, government IDs in nested JSON using rulesets.",
+      "category": "compliance",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Before exfil to external LLM, automated scanning flags records needing redaction.",
+      "design": "Walk JSON tree with depth/size caps. Pluggable detectors with confidence scores. Output paths + type + masked preview. Separate `apply_masks` tool returning transformed JSON.",
+      "suggestedTools": [
+        "scan_json_pii",
+        "apply_masks"
+      ],
+      "extensionIdeas": "Add custom regex detectors via config file loaded at startup only.",
+      "risks": "False negatives/positives—human review for high stakes."
+    },
+    {
+      "id": "adv-moderation-prehook",
+      "tier": "advanced",
+      "name": "Content moderation pre-hook",
+      "tagline": "Call provider moderation API on user-supplied text arguments before main tool.",
+      "category": "safety",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Public-facing MCPs reduce abuse by scanning prompts destined for external APIs.",
+      "design": "Middleware layer wraps each tool: serialize args text, call moderation HTTP with zero retention flag if supported, block categories configurable. Adds latency budget with fail-closed or fail-open policy per deployment.",
+      "suggestedTools": [
+        "moderate_text",
+        "wrapped_echo_demo"
+      ],
+      "extensionIdeas": "Add image moderation variant with size cap and hash dedupe.",
+      "risks": "Policy misconfiguration can block legit traffic—monitor block rates."
+    },
+    {
+      "id": "adv-cosign-verify",
+      "tier": "advanced",
+      "name": "Artifact signature verification",
+      "tagline": "Verify Sigstore/cosign signatures on container digests (design-level).",
+      "category": "supply-chain",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Deploy pipelines want AI-checked gates verifying signed images before promotion.",
+      "design": "Tool `verify_image` shells to `cosign verify` with public key ref from config OR uses Python sigstore libs if available. Captures JSON output. No network except Rekor/OIDC as configured.",
+      "suggestedTools": [
+        "verify_image",
+        "parse_attestation"
+      ],
+      "extensionIdeas": "Add SBOM fetch linkage with `cosign download sbom`.",
+      "risks": "Supply chain tools must be pinned versions; OIDC token handling sensitive."
+    },
+    {
+      "id": "adv-vault-lease-renewal",
+      "tier": "advanced",
+      "name": "Vault token lease helper",
+      "tagline": "Renew leases and fetch dynamic DB creds with tight TTL (pattern).",
+      "category": "secrets",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Short-lived creds for DB tools reduce blast radius when agents are compromised.",
+      "design": "Uses Vault SDK with `VAULT_ADDR` and `VAULT_TOKEN` from env injected by platform—not user args. Tools: `renew_self`, `read_database_creds` role-based. Never return token to model—only username/password with 60s TTL and reminder comment.",
+      "suggestedTools": [
+        "renew_self",
+        "read_database_creds"
+      ],
+      "extensionIdeas": "Add PKI cert issuance read-only listing (no private key export).",
+      "risks": "Leaked wrapped tokens in logs catastrophic—scrub logs aggressively."
+    },
+    {
+      "id": "adv-oauth-device-flow",
+      "tier": "advanced",
+      "name": "OAuth2 device flow helper",
+      "tagline": "Orchestrate device authorization grant for CLI MCP users.",
+      "category": "security",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "When stdio MCP cannot open a browser, device flow obtains refresh tokens safely.",
+      "design": "Tools: `start_device_auth` returning `user_code` URL, `poll_token` until expiry. Persist state in local encrypted file with OS keychain optional design. Clear separation: no secrets printed to stdout beyond one-time user instructions.",
+      "suggestedTools": [
+        "start_device_auth",
+        "poll_token",
+        "revoke_token"
+      ],
+      "extensionIdeas": "Add PKCE pairing for public clients where required.",
+      "risks": "User training on verifying device codes to prevent phishing."
+    },
+    {
+      "id": "adv-graphql-federated-query",
+      "tier": "advanced",
+      "name": "Federated GraphQL gateway client",
+      "tagline": "Send queries to gateway with persisted query allowlist.",
+      "category": "integration",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Microservice architectures expose a supergraph; agents should not ship arbitrary GraphQL strings.",
+      "design": "Maintain map `queryName -> gql document`. Tool `run_persisted_query` with variables JSON only. Apollo router or similar endpoint from env. Complexity metrics logged.",
+      "suggestedTools": [
+        "run_persisted_query",
+        "list_allowed_queries"
+      ],
+      "extensionIdeas": "Add `@defer` handling notes as resource doc.",
+      "risks": "Allowlisting shifts maintenance burden—CI validation for new queries."
+    },
+    {
+      "id": "adv-ws-price-bridge",
+      "tier": "advanced",
+      "name": "WebSocket market data bridge",
+      "tagline": "Stream normalized ticks to resources while tools snapshot latest.",
+      "category": "streaming",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Financial copilots need near-real-time numbers without polling REST.",
+      "design": "Background task subscribes to WS with reconnect+jitter. In-memory ring buffer. Tool `latest_quote` reads buffer; resource `market://ticks` exposes SSE-like stream if transport supports (note SSE limitations). Strict symbol allowlist.",
+      "suggestedTools": [
+        "latest_quote",
+        "subscribe_symbols"
+      ],
+      "extensionIdeas": "Add circuit for stale data if feed silent >N seconds.",
+      "risks": "Market data licensing—user responsibility."
+    },
+    {
+      "id": "adv-cdc-debezium-pattern",
+      "tier": "advanced",
+      "name": "CDC offset bookmark tool",
+      "tagline": "Track Kafka/Debezium offsets for at-least-once agent processing.",
+      "category": "eventing",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Agents consuming change streams must resume safely after restarts.",
+      "design": "Tools: `commit_offset`, `get_offset` backed by compacted Kafka topic or DynamoDB. Include partition key strategy docs. Validate monotonicity.",
+      "suggestedTools": [
+        "commit_offset",
+        "get_offset",
+        "reset_offset"
+      ],
+      "extensionIdeas": "Add schema registry compatibility check hook.",
+      "risks": "Wrong offset commits can skip or duplicate business events—monitor lag."
+    },
+    {
+      "id": "adv-idempotent-http-post",
+      "tier": "advanced",
+      "name": "Idempotent POST relay",
+      "tagline": "Relay POSTs with `Idempotency-Key` header and server-side replay cache.",
+      "category": "integration",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "LLM retries duplicate side effects; idempotency keys make POST safe.",
+      "design": "Redis cache stores response body hash keyed by idempotency key + route with TTL 24h. Tool `post_idempotent` requires key from caller or generates deterministic from canonical args hash (document tradeoffs). Returns cached response on replay.",
+      "suggestedTools": [
+        "post_idempotent"
+      ],
+      "extensionIdeas": "Add body canonicalization rules to avoid key fragmentation.",
+      "risks": "Cache poisoning if key space shared across tenants—namespace keys."
+    },
+    {
+      "id": "adv-distributed-lock",
+      "tier": "advanced",
+      "name": "Redis distributed lock",
+      "tagline": "Acquire/extend/release locks with fencing token pattern.",
+      "category": "distributed-systems",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Multi-worker agents coordinating migrations need locks beyond LLM politeness.",
+      "design": "Tool `acquire_lock` returns `{ token, leaseId }` using Redlock-ish algorithm simplified. `extend_lock`, `release_lock` verify token match. Fencing token increments stored in Redis for downstream DB writes optional doc.",
+      "suggestedTools": [
+        "acquire_lock",
+        "extend_lock",
+        "release_lock"
+      ],
+      "extensionIdeas": "Add `try_lock` non-blocking variant.",
+      "risks": "Clock skew breaks locks—document NTP requirements."
+    },
+    {
+      "id": "adv-saga-compensations",
+      "tier": "advanced",
+      "name": "Saga compensation planner",
+      "tagline": "Given ordered steps with undo URIs, execute forwards with rollback on failure (HTTP).",
+      "category": "distributed-systems",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Orchestrating purchases across services requires explicit compensations.",
+      "design": "YAML saga definition lists `forward` and `compensate` URLs per step. Engine executes forwards; on error unwinds compensations in reverse order with payload echo from forward response ids. Timeouts per leg.",
+      "suggestedTools": [
+        "run_saga",
+        "validate_saga"
+      ],
+      "extensionIdeas": "Add partial completion human task emission resource.",
+      "risks": "Compensations themselves can fail—needs out-of-band reconciliation."
+    },
+    {
+      "id": "adv-cost-estimator",
+      "tier": "advanced",
+      "name": "Token and API cost estimator",
+      "tagline": "Estimate USD cost from token usage histogram + provider price table version.",
+      "category": "ai-ops",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "FinOps for agent runs: attribute estimated dollars to tenants and tools.",
+      "design": "Static price table versioned dated. Tool `estimate_cost` inputs counts per model id; outputs subtotal + disclaimer. Separate `attribute_by_tool` taking run manifest JSON.",
+      "suggestedTools": [
+        "estimate_cost",
+        "attribute_by_tool"
+      ],
+      "extensionIdeas": "Pull live pricing optional via cached HTTP daily.",
+      "risks": "Estimates != invoices; tax and discounts ignored."
+    },
+    {
+      "id": "adv-deploy-gate",
+      "tier": "advanced",
+      "name": "Blue/green deploy readiness gate",
+      "tagline": "Aggregate health checks + error budget burn before go/no-go.",
+      "category": "delivery",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Release managers want an MCP tool that answers 'safe to promote' with evidence.",
+      "design": "Tool `evaluate_release` calls configured HTTP health endpoints in parallel, reads Prometheus error budget query, applies policy thresholds from YAML. Returns structured verdict and reasons array.",
+      "suggestedTools": [
+        "evaluate_release",
+        "dry_run_policies"
+      ],
+      "extensionIdeas": "Add canary metrics window comparison optional.",
+      "risks": "False negatives can block revenue—tune policies carefully."
+    },
+    {
+      "id": "adv-soc2-checklist-runner",
+      "tier": "advanced",
+      "name": "SOC2 evidence checklist runner",
+      "tagline": "Run scripted checks (TLS versions, bucket logging flags) via read-only cloud APIs.",
+      "category": "compliance",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "GRC assistants collect repeatable evidence for auditors with timestamps.",
+      "design": "Pluggable checks as modules exporting `run(ctx): Finding[]`. Tools: `run_suite`, `export_findings_json`. Cloud creds via ambient AWS/GCP metadata in worker—not end user laptop for production.",
+      "suggestedTools": [
+        "run_suite",
+        "export_findings_json"
+      ],
+      "extensionIdeas": "Map findings to control IDs as configurable table.",
+      "risks": "Mis-scoped IAM can read sensitive infra—read-only least privilege."
+    },
+    {
+      "id": "adv-envelope-encryption",
+      "tier": "advanced",
+      "name": "Envelope encryption helper",
+      "tagline": "Generate data key, encrypt DEK with KMS, return ciphertext bundle JSON.",
+      "category": "security",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Agents storing customer data must avoid shipping plaintext keys in prompts.",
+      "design": "Tool `encrypt_payload` calls KMS GenerateDataKey, encrypts payload with AES-GCM locally, returns `{ ciphertext, iv, wrappedDek, kmsKeyId }`. `decrypt_payload` reverses with KMS Decrypt. All crypto in vetted libs.",
+      "suggestedTools": [
+        "encrypt_payload",
+        "decrypt_payload",
+        "rotate_wrapped_dek"
+      ],
+      "extensionIdeas": "Add context AAD binding tenant id.",
+      "risks": "Cryptographic misuse easy—require security review before prod."
+    },
+    {
+      "id": "adv-llm-router-latency",
+      "tier": "advanced",
+      "name": "Multi-model LLM router",
+      "tagline": "Route completions to model A/B based on SLA, cost, and safety tier.",
+      "category": "ai-ops",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "High-volume agents optimize price/performance dynamically while respecting safety.",
+      "design": "Maintains rolling p95 latency per model from recent calls stored in Redis. Tool `route_completion` selects model per policy JSON: prefer cheapest under latency SLO else escalate. Does not hold provider keys in repo—calls internal gateway only.",
+      "suggestedTools": [
+        "route_completion",
+        "report_slo"
+      ],
+      "extensionIdeas": "Add circuit for provider outage detection.",
+      "risks": "Routing bias can starve premium model budget—watchdog caps."
+    },
+    {
+      "id": "adv-zero-trust-mtls",
+      "tier": "advanced",
+      "name": "mTLS service mesh caller",
+      "tagline": "Call internal REST services presenting SPIFFE-derived client certs.",
+      "category": "platform",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Zero-trust meshes require cert rotation and SAN verification—not typical bearer flows.",
+      "design": "Load certs from SDS socket or filesystem paths from env. Tool `mesh_request` validates server cert chain against mesh trust bundle. Logs SPIFFE ID only.",
+      "suggestedTools": [
+        "mesh_request",
+        "rotate_sds_hint"
+      ],
+      "extensionIdeas": "Add workload identity attestation resource stub.",
+      "risks": "Cert misconfiguration causes subtle partial TLS—strong tests needed."
+    },
+    {
+      "id": "adv-policy-as-code-opa",
+      "tier": "advanced",
+      "name": "OPA policy evaluation sidecar",
+      "tagline": "Evaluate Rego bundles for allow/deny on tool arguments pre-execution.",
+      "category": "compliance",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "Organizations centralize authorization in OPA; MCP should query policies before side effects.",
+      "design": "Tool `policy_check` sends `{ input: { tool, args_digest, tenant } }` to OPA HTTP API. Bundle version pinned. Deny wins default. Cache decisions briefly keyed by hash.",
+      "suggestedTools": [
+        "policy_check",
+        "explain_deny"
+      ],
+      "extensionIdeas": "Add bundle hot-reload watch with backoff.",
+      "risks": "Incomplete Rego can default allow—fail-closed config flag required."
+    },
+    {
+      "id": "adv-observability-correlation",
+      "tier": "advanced",
+      "name": "Distributed tracing propagation",
+      "tagline": "Inject/extract W3C tracecontext headers on outbound HTTP tool calls.",
+      "category": "observability",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Debugging agent chains across services needs shared trace ids.",
+      "design": "Maintain current span context in contextvars. Tool `call_traced_http` wraps httpx injecting headers from active span. Export spans to OTLP endpoint from env optional.",
+      "suggestedTools": [
+        "call_traced_http",
+        "attach_correlation_id"
+      ],
+      "extensionIdeas": "Add baggage propagation limits to avoid header bloat.",
+      "risks": "PII in baggage forbidden—validators required."
+    },
+    {
+      "id": "adv-quota-budget-server",
+      "tier": "advanced",
+      "name": "Tenant budget enforcer",
+      "tagline": "Enforce per-day token and tool-call budgets persisted in Postgres.",
+      "category": "platform",
+      "primaryRuntime": "typescript",
+      "transport": "stdio",
+      "overview": "SaaS MCP hosts must cap runaway agent spend per customer.",
+      "design": "Middleware decrements budget atomically with row locks. Tools return `budget_exceeded` error including reset time UTC. Admin tool `adjust_budget` behind separate auth scope.",
+      "suggestedTools": [
+        "check_and_consume",
+        "budget_status",
+        "adjust_budget"
+      ],
+      "extensionIdeas": "Add soft warnings at 80% consumption in metadata channel.",
+      "risks": "Clock skew affects reset windows—use DB timestamptz."
+    },
+    {
+      "id": "adv-secure-code-exec-isolation",
+      "tier": "advanced",
+      "name": "Isolated code execution broker MCP",
+      "tagline": "Queue snippets to sandbox workers; never execute in API process (pattern).",
+      "category": "security",
+      "primaryRuntime": "python",
+      "transport": "stdio",
+      "overview": "Some advanced templates describe user-code execution—this pattern routes to gVisor/Firecracker sandboxes via queue.",
+      "design": "Tools: `submit_job` returns job id; `poll_result` returns stdout/stderr capped; `cancel_job`. Signed payloads. Resource CPU/mem/time limits enforced worker-side only.",
+      "suggestedTools": [
+        "submit_job",
+        "poll_result",
+        "cancel_job"
+      ],
+      "extensionIdeas": "Add language allowlist per tenant.",
+      "risks": "Wrong isolation equals RCE—treat as highest risk surface."
+    }
+  ]
+}
