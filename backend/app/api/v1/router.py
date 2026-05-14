@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     auth,
+    codegen,
     deployments_route,
     health,
     projects,
@@ -24,3 +25,4 @@ api_router.include_router(prompts_api.router)
 api_router.include_router(templates_route.router)
 api_router.include_router(testing_api.router)
 api_router.include_router(deployments_route.router)
+api_router.include_router(codegen.router)

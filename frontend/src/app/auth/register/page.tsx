@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { apiJson } from "@/lib/api";
+import { apiJson, ApiError, getApiErrorMessage } from "@/lib/api";
 import { setStoredAccessToken } from "@/lib/auth-storage";
 
 type TokenResponse = { access_token: string; token_type: string };
@@ -38,9 +38,15 @@ export default function RegisterPage() {
       router.push("/");
       router.refresh();
     } catch (err) {
-      const status = (err as Error & { status?: number }).status;
-      if (status === 409) {
-        setError("An account with this email already exists.");
+      if (err instanceof ApiError) {
+        const apiMessage = getApiErrorMessage(err.body);
+        if (err.status === 409) {
+          setError("An account with this email already exists.");
+        } else if (apiMessage) {
+          setError(apiMessage);
+        } else {
+          setError("Registration failed. Try a different email or stronger password.");
+        }
       } else {
         setError("Registration failed. Try a different email or stronger password.");
       }

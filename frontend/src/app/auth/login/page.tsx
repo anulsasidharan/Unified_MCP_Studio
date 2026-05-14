@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { apiJson } from "@/lib/api";
+import { apiJson, ApiError, getApiErrorMessage } from "@/lib/api";
 import { setStoredAccessToken } from "@/lib/auth-storage";
 
 type TokenResponse = { access_token: string; token_type: string };
@@ -28,8 +28,29 @@ export default function LoginPage() {
       setStoredAccessToken(data.access_token);
       router.push("/");
       router.refresh();
-    } catch {
-      setError("Login failed. Check your email and password.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        const apiMessage = getApiErrorMessage(err.body);
+        if (apiMessage) {
+          setError(apiMessage);
+        } else if (err.status === 401) {
+          setError("Incorrect email or password.");
+        } else if (err.status === 503 || err.status === 502 || err.status === 504) {
+          setError(
+            "The API or database is not reachable. Start PostgreSQL, set backend DATABASE_URL to match " +
+              "your DB user and password (see docker-compose POSTGRES_*), run alembic upgrade head, then restart the API.",
+          );
+        } else if (err.status >= 500) {
+          setError(
+            "Server error while signing in. Typical causes: PostgreSQL not running, wrong DATABASE_URL in backend/.env, " +
+              "or migrations not applied. Confirm uvicorn is running and check the API terminal log.",
+          );
+        } else {
+          setError(`Sign-in failed (${err.status}). Try again.`);
+        }
+      } else {
+        setError("Login failed. Check your network connection.");
+      }
     } finally {
       setLoading(false);
     }

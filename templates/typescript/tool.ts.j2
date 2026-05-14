@@ -1,0 +1,10 @@
+/** Handler for the '{{ tool.name }}' tool. */
+
+export async function handle(arguments_: Record<string, unknown>): Promise<string> {
+{% if tool.handler_code and tool.handler_code.strip() %}
+{{ tool.handler_code | indent(2, first=True) }}
+{% else %}
+  // TODO: implement this tool handler
+  return `Tool '{{ tool.name }}' called with: ${JSON.stringify(arguments_)}`;
+{% endif %}
+}

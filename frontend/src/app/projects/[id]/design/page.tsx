@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import ReactFlow, {
   Background, Controls, MiniMap,
   addEdge, useEdgesState, useNodesState,
@@ -17,6 +17,9 @@ import { apiJson } from "@/lib/api";
 import { getStoredAccessToken } from "@/lib/auth-storage";
 
 const nodeTypes = { toolNode: ToolNode, resourceNode: ResourceNode, promptNode: PromptNode };
+
+type GeneratedFile = { path: string; content: string };
+type CodePreview = { runtime: string; project_name: string; files: GeneratedFile[] };
 
 function makeNodes(
   tools: ToolRow[],
@@ -44,6 +47,7 @@ function makeNodes(
 
 export default function DesignerPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const projectId = params.id;
   const [token, setToken] = useState<string | null>(null);
   const [tools, setTools] = useState<ToolRow[]>([]);
@@ -51,6 +55,11 @@ export default function DesignerPage() {
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [codePreview, setCodePreview] = useState<CodePreview | null>(null);
+  const [previewFile, setPreviewFile] = useState<string | null>(null);
+  const downloadRef = useRef<HTMLAnchorElement>(null);
 
   const initialNodes = useMemo(() => makeNodes(tools, resources, prompts), [tools, resources, prompts]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -68,6 +77,9 @@ export default function DesignerPage() {
       apiJson<PromptRow[]>("/api/v1/projects/" + projectId + "/prompts", { token: t }),
     ]).then(([ts, rs, ps]) => {
       setTools(ts); setResources(rs); setPrompts(ps);
+      if (searchParams.get("generate") === "1") {
+        doGenerate(t);
+      }
     }).catch(() => setLoadError("Could not load project items."));
   }, [projectId]);
 
@@ -90,6 +102,44 @@ export default function DesignerPage() {
     }
   }, [tools, resources, prompts]);
 
+  async function doGenerate(tok?: string) {
+    const t = tok ?? token;
+    if (!t) return;
+    setGenerating(true);
+    try {
+      const res = await apiJson<CodePreview>("/api/v1/projects/" + projectId + "/generate", {
+        method: "POST", token: t,
+      });
+      setCodePreview(res);
+      setPreviewFile(res.files[0]?.path ?? null);
+    } catch {
+      alert("Could not generate code. Make sure the project has at least one tool.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function downloadZip() {
+    if (!token) return;
+    try {
+      const res = await fetch("/api/v1/projects/" + projectId + "/download", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      if (!res.ok) { alert("Download failed."); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = downloadRef.current!;
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = cd.match(/filename="([^"]+)"/);
+      a.href = url;
+      a.download = match ? match[1] : "mcp-server.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Download failed.");
+    }
+  }
+
   async function addTool() {
     if (!token) return;
     try {
@@ -98,7 +148,7 @@ export default function DesignerPage() {
         body: JSON.stringify({
           name: "new_tool", description: "", handler_language: "python",
           input_schema: { type: "object", properties: {}, additionalProperties: false },
-          handler_code: "",
+          handler_code: "return f\"Hello from new_tool! args={arguments}\"",
         }),
       });
       setTools((prev) => [...prev, t]);
@@ -134,26 +184,21 @@ export default function DesignerPage() {
   }
 
   function onSaved(updated: SelectedItem) {
+    setSavedAt(new Date().toLocaleTimeString());
     if (updated.type === "tool") {
       setTools((prev) => prev.map((t) => (t.id === updated.data.id ? updated.data : t)));
       setNodes((nds) => nds.map((n) =>
-        n.id === "tool-" + updated.data.id
-          ? { ...n, data: { ...n.data, label: updated.data.name } }
-          : n
+        n.id === "tool-" + updated.data.id ? { ...n, data: { ...n.data, label: updated.data.name } } : n
       ));
     } else if (updated.type === "resource") {
       setResources((prev) => prev.map((r) => (r.id === updated.data.id ? updated.data : r)));
       setNodes((nds) => nds.map((n) =>
-        n.id === "resource-" + updated.data.id
-          ? { ...n, data: { ...n.data, label: updated.data.name } }
-          : n
+        n.id === "resource-" + updated.data.id ? { ...n, data: { ...n.data, label: updated.data.name } } : n
       ));
     } else {
       setPrompts((prev) => prev.map((p) => (p.id === updated.data.id ? updated.data : p)));
       setNodes((nds) => nds.map((n) =>
-        n.id === "prompt-" + updated.data.id
-          ? { ...n, data: { ...n.data, label: updated.data.name } }
-          : n
+        n.id === "prompt-" + updated.data.id ? { ...n, data: { ...n.data, label: updated.data.name } } : n
       ));
     }
     setSelected(updated);
@@ -168,27 +213,53 @@ export default function DesignerPage() {
     setSelected(null);
   }
 
+  const selectedFileContent = codePreview?.files.find((f) => f.path === previewFile)?.content ?? "";
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#09090b", color: "#fafafa" }}>
-      <header style={{ borderBottom: "1px solid #27272a", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href={"/projects/" + projectId} style={{ color: "#71717a", fontSize: 13 }}>Back to Project</Link>
+      {/* Header */}
+      <header style={{ borderBottom: "1px solid #27272a", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <Link href={"/projects/" + projectId} style={{ color: "#71717a", fontSize: 13, whiteSpace: "nowrap" }}>← Project</Link>
           <span style={{ color: "#3f3f46" }}>|</span>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>Visual Designer</span>
-          <span style={{ display: "flex", gap: 10, marginLeft: 8, fontSize: 11, color: "#52525b" }}>
+          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>Visual Designer</span>
+          <span style={{ display: "flex", gap: 10, marginLeft: 4, fontSize: 11, color: "#52525b", flexWrap: "wrap" }}>
             <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#2563eb", marginRight: 4 }} />Tools ({tools.length})</span>
             <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#16a34a", marginRight: 4 }} />Resources ({resources.length})</span>
             <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#7c3aed", marginRight: 4 }} />Prompts ({prompts.length})</span>
           </span>
+          {savedAt && (
+            <span style={{ fontSize: 11, color: "#16a34a", marginLeft: 4 }}>✓ Saved {savedAt}</span>
+          )}
         </div>
-        <StudioNav />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <button
+            onClick={() => doGenerate()}
+            disabled={generating}
+            style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: generating ? "wait" : "pointer", opacity: generating ? 0.7 : 1 }}
+          >
+            {generating ? "Generating…" : "⚡ Generate Code"}
+          </button>
+          <button
+            onClick={downloadZip}
+            title="Download ZIP of generated code"
+            style={{ background: "transparent", color: "#a1a1aa", border: "1px solid #3f3f46", borderRadius: 6, padding: "7px 12px", fontSize: 12, cursor: "pointer" }}
+          >
+            ↓ Download ZIP
+          </button>
+          <StudioNav />
+        </div>
       </header>
+
+      {/* Hidden download anchor */}
+      <a ref={downloadRef} style={{ display: "none" }} />
 
       {loadError && (
         <div style={{ padding: "8px 16px", background: "#451a03", color: "#fbbf24", fontSize: 13 }}>{loadError}</div>
       )}
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        {/* Left sidebar — add nodes */}
         <aside style={{ width: 176, borderRight: "1px solid #27272a", padding: 12, display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "#0a0a0b" }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: "#52525b", textTransform: "uppercase", marginBottom: 4 }}>Add Node</p>
           <button onClick={addTool} style={{ textAlign: "left", border: "1px solid #1d4ed8", borderRadius: 6, background: "#0c1a2e", color: "#93c5fd", padding: "8px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
@@ -201,10 +272,11 @@ export default function DesignerPage() {
             + Prompt
           </button>
           <div style={{ marginTop: 12, borderTop: "1px solid #27272a", paddingTop: 12 }}>
-            <p style={{ fontSize: 11, color: "#3f3f46", lineHeight: 1.6 }}>Click node to edit. Drag to reposition. Connect handles to link nodes.</p>
+            <p style={{ fontSize: 11, color: "#3f3f46", lineHeight: 1.6 }}>Click a node to edit it. When ready, click <strong style={{ color: "#52525b" }}>⚡ Generate Code</strong> to preview and download your MCP server.</p>
           </div>
         </aside>
 
+        {/* React Flow canvas */}
         <div style={{ flex: 1, position: "relative" }}>
           <ReactFlow
             nodes={nodes}
@@ -221,17 +293,14 @@ export default function DesignerPage() {
             <MiniMap
               style={{ background: "#18181b" }}
               maskColor="rgba(0,0,0,0.6)"
-              nodeColor={(n) =>
-                n.type === "toolNode" ? "#2563eb"
-                : n.type === "resourceNode" ? "#16a34a"
-                : "#7c3aed"
-              }
+              nodeColor={(n) => n.type === "toolNode" ? "#2563eb" : n.type === "resourceNode" ? "#16a34a" : "#7c3aed"}
             />
             <Controls style={{ background: "#18181b", borderColor: "#27272a" }} />
             <Background gap={20} color="#1c1c1e" />
           </ReactFlow>
         </div>
 
+        {/* Detail panel */}
         {selected && token && (
           <DetailPanel
             item={selected}
@@ -242,6 +311,75 @@ export default function DesignerPage() {
           />
         )}
       </div>
+
+      {/* Code preview overlay */}
+      {codePreview && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 50, display: "flex", flexDirection: "column" }}>
+          {/* Overlay header */}
+          <div style={{ borderBottom: "1px solid #27272a", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0a0a0b", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>{codePreview.project_name}</span>
+              <span style={{ fontSize: 11, background: "#1c1c1e", border: "1px solid #3f3f46", borderRadius: 4, padding: "2px 8px", color: "#a1a1aa" }}>{codePreview.runtime}</span>
+              <span style={{ fontSize: 12, color: "#52525b" }}>{codePreview.files.length} files generated</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                onClick={downloadZip}
+                style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                ↓ Download ZIP
+              </button>
+              <button
+                onClick={() => setCodePreview(null)}
+                style={{ background: "transparent", color: "#a1a1aa", border: "1px solid #3f3f46", borderRadius: 6, padding: "7px 12px", fontSize: 12, cursor: "pointer" }}
+              >
+                ✕ Close
+              </button>
+            </div>
+          </div>
+
+          {/* File browser + code view */}
+          <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+            {/* File tree */}
+            <nav style={{ width: 240, borderRight: "1px solid #27272a", overflowY: "auto", background: "#0a0a0b", flexShrink: 0, padding: "8px 0" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: "#52525b", textTransform: "uppercase", padding: "4px 16px 8px" }}>Files</p>
+              {codePreview.files.map((f) => (
+                <button
+                  key={f.path}
+                  onClick={() => setPreviewFile(f.path)}
+                  style={{
+                    display: "block", width: "100%", textAlign: "left",
+                    padding: "6px 16px", fontSize: 12, fontFamily: "monospace",
+                    background: previewFile === f.path ? "#1c1c1e" : "transparent",
+                    color: previewFile === f.path ? "#fafafa" : "#71717a",
+                    border: "none", cursor: "pointer",
+                    borderLeft: previewFile === f.path ? "2px solid #2563eb" : "2px solid transparent",
+                  }}
+                >
+                  {f.path}
+                </button>
+              ))}
+            </nav>
+
+            {/* Code view */}
+            <div style={{ flex: 1, overflowY: "auto", background: "#09090b", padding: "16px 20px" }}>
+              {previewFile && (
+                <>
+                  <p style={{ fontSize: 12, color: "#52525b", marginBottom: 12, fontFamily: "monospace" }}>{previewFile}</p>
+                  <pre style={{
+                    margin: 0, padding: "16px", background: "#111113", borderRadius: 8,
+                    border: "1px solid #27272a", fontSize: 12, lineHeight: 1.7,
+                    color: "#e4e4e7", fontFamily: "'Fira Code', 'Cascadia Code', 'Courier New', monospace",
+                    whiteSpace: "pre-wrap", wordBreak: "break-word",
+                  }}>
+                    <code>{selectedFileContent}</code>
+                  </pre>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
